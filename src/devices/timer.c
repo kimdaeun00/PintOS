@@ -94,7 +94,6 @@ timer_sleep (int64_t ticks)
   enum intr_level level = intr_disable();
   if(ticks>0){
     int64_t end_time = start + ticks;
-    // printf("#######%lld\n",end_time);
     thread_insert_sleep(end_time); 
     thread_block();
     intr_set_level(level);
