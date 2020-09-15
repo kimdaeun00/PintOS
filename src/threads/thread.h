@@ -114,8 +114,8 @@ void thread_start (void);
 /*Implemented*/
 bool less(const struct list_elem *, const struct list_elem *, void *);
 void print_current(void);
-void print_list(void);
 void thread_insert_sleep(int64_t);
+void thread_wake(int64_t current_tick);
 
 void thread_tick (void);
 void thread_print_stats (void);
