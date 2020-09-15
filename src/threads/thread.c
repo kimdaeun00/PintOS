@@ -21,6 +21,18 @@
 #define THREAD_MAGIC 0xcd6abf4b
 
 /*less function for list_method argument*/
+
+bool less_priority(const struct list_elem *a, const struct list_elem *b, void *aux){
+  int64_t priority_a = list_entry(a, struct thread, elem) -> priority;
+  int64_t priority_b = list_entry(b, struct thread, elem) -> priority;
+  if(priority_a > priority_b){
+    return true;
+  }
+  else{
+    return false;
+  }
+}
+
 bool less(const struct list_elem *a, const struct list_elem *b, void *aux){
   int64_t end_time_a = list_entry(a, struct thread, elem) -> endtime;
   int64_t end_time_b = list_entry(b, struct thread, elem) -> endtime;
@@ -185,6 +197,15 @@ thread_insert_sleep(int64_t endtime){
 
 }
 
+void
+thread_insert_ready(struct thread *t){
+  list_insert_ordered(&ready_list, &t->elem,less_priority,NULL);
+}
+
+
+
+/////////////////////////////Debugging
+
 //Debugging with print
 void print_current(void){ //print information of current thread
   printf("tid : %d , sleeping : %d\n",thread_current()->tid,list_size(&sleep_list));
@@ -212,6 +233,9 @@ thread_print_stats (void)
   printf ("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
           idle_ticks, kernel_ticks, user_ticks);
 }
+
+
+
 
 /* Creates a new kernel thread named NAME with the given initial
    PRIORITY, which executes FUNCTION passing AUX as the argument,
@@ -303,7 +327,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  thread_insert_ready(t);
+  // list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -374,7 +399,8 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    thread_insert_ready(cur);
+    // list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);

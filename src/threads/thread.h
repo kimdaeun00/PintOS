@@ -112,10 +112,12 @@ void thread_init (void);
 void thread_start (void);
 
 /*Implemented*/
+bool less_priority(const struct list_elem *, const struct list_elem *, void *);
 bool less(const struct list_elem *, const struct list_elem *, void *);
 void print_current(void);
 void thread_insert_sleep(int64_t);
 void thread_wake(int64_t current_tick);
+void thread_insert_ready(struct thread *);
 
 void thread_tick (void);
 void thread_print_stats (void);
