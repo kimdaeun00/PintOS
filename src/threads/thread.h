@@ -89,6 +89,7 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
+   int64_t endtime;                    /* Time when thread need to wake up*/
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -109,6 +110,12 @@ extern bool thread_mlfqs;
 
 void thread_init (void);
 void thread_start (void);
+
+/*Implemented*/
+bool less(const struct list_elem *, const struct list_elem *, void *);
+void print_current(void);
+void print_list(void);
+void thread_insert_sleep(int64_t);
 
 void thread_tick (void);
 void thread_print_stats (void);

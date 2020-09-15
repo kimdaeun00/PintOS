@@ -20,6 +20,18 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+/*less function for list_method argument*/
+bool less(const struct list_elem *a, const struct list_elem *b, void *aux){
+  int64_t end_time_a = list_entry(a, struct thread, elem) -> endtime;
+  int64_t end_time_b = list_entry(b, struct thread, elem) -> endtime;
+  if(end_time_a > end_time_b){
+    return true;
+  }
+  else{
+    return false;
+  }
+}
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -27,6 +39,10 @@ static struct list ready_list;
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
+
+/* List of all sleeping processes.
+*/
+static struct list sleep_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -92,6 +108,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleep_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -134,9 +151,50 @@ thread_tick (void)
   else
     kernel_ticks++;
 
+  printf("ticktack\n");
+  if(list_entry(list_tail(&sleep_list), struct thread, elem) -> endtime < 0){
+    printf("!!!!!!!");
+  }
+
+  while(!list_empty(&sleep_list) && (list_entry(list_tail(&sleep_list), struct thread, elem) -> endtime <= kernel_ticks)){
+    struct thread *temp = list_entry(list_pop_back(&sleep_list),struct thread, elem);
+    // printf("%lld vs %lld  ",list_entry(list_tail(&sleep_list), struct thread, elem) -> endtime,kernel_ticks);
+    // printf("%d popped tid : %d\n", kernel_ticks, temp->tid);
+    thread_unblock(temp);
+  }
+
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
     intr_yield_on_return ();
+}
+
+void
+thread_insert_sleep(int64_t endtime){
+  struct thread *t = thread_current ();
+  printf("%lld current : %d %s end at %d\n",kernel_ticks,t->tid,t->name,endtime);
+  t->endtime = endtime;
+  list_insert_ordered(&sleep_list, &t->elem,less,NULL);
+
+}
+
+//Debugging with print
+void print_current(void){
+  printf("tid : %d , sleeping : %d\n",thread_current()->tid,list_size(&sleep_list));
+}
+
+void print_list(void){
+  int i =0;
+  struct list_elem *e;
+  printf("NOW : %d\n",kernel_ticks);
+  printf("Sleeping list :\n");
+  if(list_size(&sleep_list)==0){
+    printf("Empty list\n\n");
+  }
+  for(e= list_begin(&sleep_list);e!=list_end(&sleep_list); ){
+    printf("#%d<tid:%d, name:%s end:%d>\n",i++,list_entry(e,struct thread, elem)->tid,list_entry(e,struct thread, elem)->name, list_entry(e,struct thread, elem)->endtime);
+    e = list_next(e);
+  }
+  printf("\n\n");
 }
 
 /* Prints thread statistics. */

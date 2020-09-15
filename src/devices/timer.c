@@ -90,10 +90,16 @@ void
 timer_sleep (int64_t ticks) 
 {
   int64_t start = timer_ticks ();
-
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  enum intr_level level = intr_disable();
+  if(ticks>0){
+    int64_t end_time = start + ticks;
+    printf("#######%lld\n",end_time);
+    thread_insert_sleep(end_time); 
+    thread_block();
+    intr_set_level(level);
+  
+  }
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
