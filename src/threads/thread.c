@@ -188,6 +188,7 @@ thread_wake(int64_t ticks)
   }
 }
 
+
 void
 thread_insert_sleep(int64_t endtime){
   struct thread *t = thread_current ();
@@ -199,7 +200,9 @@ thread_insert_sleep(int64_t endtime){
 
 void
 thread_insert_ready(struct thread *t){
+  // printf("insert : %s %d\n",t->name,t->priority);
   list_insert_ordered(&ready_list, &t->elem,less_priority,NULL);
+  //printf("size: %d\n",list_size(&ready_list));
 }
 
 
@@ -287,7 +290,6 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
-
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -322,6 +324,7 @@ void
 thread_unblock (struct thread *t) 
 {
   enum intr_level old_level;
+  // printf("unblock : %s %d\n",t->name,t->priority);
 
   ASSERT (is_thread (t));
 
@@ -330,6 +333,12 @@ thread_unblock (struct thread *t)
   thread_insert_ready(t);
   // list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
+  // printf("ready size : %d\n",list_size(&ready_list));
+  // printf("current : %s\n",thread_current()->name);
+  if(thread_current() != idle_thread && !list_empty(&ready_list) && thread_current()->priority <= list_entry(list_front(&ready_list), struct thread, elem) -> priority){
+    thread_yield();
+  }
+  
   intr_set_level (old_level);
 }
 
@@ -393,6 +402,7 @@ void
 thread_yield (void) 
 {
   struct thread *cur = thread_current ();
+  // printf("yeild : %s\n",cur->name);
   enum intr_level old_level;
   
   ASSERT (!intr_context ());
@@ -428,6 +438,9 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  if((!list_empty(&ready_list)) && thread_current()->priority <= list_entry(list_front(&ready_list), struct thread, elem) -> priority){
+    thread_yield();
+  }
 }
 
 /* Returns the current thread's priority. */
