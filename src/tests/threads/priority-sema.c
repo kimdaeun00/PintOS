@@ -29,9 +29,10 @@ test_priority_sema (void)
       snprintf (name, sizeof name, "priority %d", priority);
       thread_create (name, priority, priority_sema_thread, NULL);
     }
-
+  
   for (i = 0; i < 10; i++) 
     {
+      // msg("%s , %s",thread_current()->name,list_entry(list_front(&sema.waiters),struct thread, elem)->name);
       sema_up (&sema);
       msg ("Back in main thread."); 
     }
