@@ -32,8 +32,10 @@ test_priority_sema (void)
   
   for (i = 0; i < 10; i++) 
     {
-      // msg("%s , %s",thread_current()->name,list_entry(list_front(&sema.waiters),struct thread, elem)->name);
+      // msg("%d",sema.value);
+      // msg("%d", list_empty(&sema.waiters));
       sema_up (&sema);
+      // msg("%s , %s",thread_current()->name,list_entry(list_front(&sema.waiters),struct thread, elem)->name);
       msg ("Back in main thread."); 
     }
 }
@@ -41,6 +43,8 @@ test_priority_sema (void)
 static void
 priority_sema_thread (void *aux UNUSED) 
 {
+  // msg("%d", sema.value);
   sema_down (&sema);
+  // msg("%d", list_empty(&sema.waiters));
   msg ("Thread %s woke up.", thread_name ());
 }
