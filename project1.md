@@ -2,7 +2,7 @@ CS330 PintOS project1
 ====================
 
 ----
-### 1. Day 1  (Sep 15th) : Commit #1 
+### Day 1  (Sep 14th) : Commit #1 
 #### Main issue : Timer  
 #####    thread.h
 >   Added
@@ -25,7 +25,7 @@ CS330 PintOS project1
 
 ----
 
-### 2. Day 2  (Sep 16th) : Commit #2, #3
+### Day 2  (Sep 15th) : Commit #2, #3
 #### Main issue : Timer(all alarm test) & Priority(change,fifo,preempt test)
 #####    thread.h
 >   Added
@@ -45,4 +45,24 @@ CS330 PintOS project1
 
 #####    timer.c    
 >   Modified    
->    >  1.  timer_interrupt():  thread_tick 마다 thread_wake()를 실행하여 깨울 Thread sleep_list에서 꺼내기 
+>    >  1.  timer_interrupt():  thread_tick 마다 thread_wake()를 실행하여 깨울 Thread sleep_list에서 꺼내기
+
+---
+### Day 3  (Sep 16th) : Commit 
+#### Main issue : Priority(sema, donate-one)
+#####    thread.h
+>   Added
+>		>		1. int real_priority : original priority of thread	
+
+#####    thread.c
+
+>   Modified
+>   >   1. init_priority() :  real_priority 
+
+#####   	synch.c    
+>   Modified    
+>   >  	1.  sema_up()	: sema++ 하는 코드를 if stamement 이전으로 변경
+>		>		2.	sema_down()	:	wating list 에 추가하는 방식을 insert_ordered를 사용하는 방식으로 변경
+>		>		3.	lock_aquire()	:	semaphore가 down 되어 있는 경우 추가할때마다 waiting list에서 가장 큰 priority 값으로 holder값을 변경
+>		>		4.	lock_release()	:	release할 경우 holder의 priority를 real값으로 변경, lock의 holder를 waiters의 첫번째 thread로 설정
+
