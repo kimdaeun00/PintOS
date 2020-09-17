@@ -324,18 +324,16 @@ void
 thread_unblock (struct thread *t) 
 {
   enum intr_level old_level;
-  // printf("unblock : %s %d\n",t->name,t->priority);
+  // msg("unblock : %s",&t->name);
 
   ASSERT (is_thread (t));
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   thread_insert_ready(t);
-  // list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
-  // printf("ready size : %d\n",list_size(&ready_list));
-  // printf("current : %s\n",thread_current()->name);
   if(thread_current() != idle_thread && !list_empty(&ready_list) && thread_current()->priority <= list_entry(list_front(&ready_list), struct thread, elem) -> priority){
+    // msg("%s",thread_current()->name);
     thread_yield();
   }
   
@@ -567,6 +565,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->real_priority = priority;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
