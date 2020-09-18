@@ -4,7 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-
+#include "threads/synch.h"
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -90,7 +90,9 @@ struct thread
     int priority;                       /* Priority. - current priority */
     struct list_elem allelem;           /* List element for all threads list. */
    int64_t endtime;                    /* Time when thread need to wake up*/
-   int real_priority;                  /*original priority before/after donation*?
+   int real_priority;                  /*original priority before/after donation*/
+   struct lock *waiting_lock;
+   struct list lock_list;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -113,6 +115,7 @@ void thread_init (void);
 void thread_start (void);
 
 /*Implemented*/
+bool less_lock(const struct list_elem *, const struct list_elem *, void *);
 bool less_priority(const struct list_elem *, const struct list_elem *, void *);
 bool less(const struct list_elem *, const struct list_elem *, void *);
 void print_current(void);

@@ -42,17 +42,16 @@ test_sleep (int thread_cnt, int iterations)
   msg ("Creating %d threads to sleep %d times each.", thread_cnt, iterations);
   msg ("Each thread sleeps 10 ticks each time.");
   msg ("Within an iteration, all threads should wake up on the same tick.");
-
   /* Allocate memory. */
   output = malloc (sizeof *output * iterations * thread_cnt * 2);
   if (output == NULL)
     PANIC ("couldn't allocate memory for test");
-
+  
   /* Initialize test. */
   test.start = timer_ticks () + 100;
   test.iterations = iterations;
   test.output_pos = output;
-
+  
   /* Start threads. */
   ASSERT (output != NULL);
   for (i = 0; i < thread_cnt; i++)

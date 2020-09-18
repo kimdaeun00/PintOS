@@ -21,6 +21,16 @@
 #define THREAD_MAGIC 0xcd6abf4b
 
 /*less function for list_method argument*/
+bool less_lock(const struct list_elem *a, const struct list_elem *b, void *aux){
+  int64_t priority_a = list_entry(list_front(&list_entry(a, struct lock, elem) -> semaphore .waiters),struct thread, elem)->priority;
+  int64_t priority_b = list_entry(list_front(&list_entry(b, struct lock, elem) -> semaphore .waiters),struct thread, elem)->priority;
+  if(priority_a > priority_b){
+    return true;
+  }
+  else{
+    return false;
+  }
+}
 
 bool less_priority(const struct list_elem *a, const struct list_elem *b, void *aux){
   int64_t priority_a = list_entry(a, struct thread, elem) -> priority;
@@ -214,20 +224,20 @@ void print_current(void){ //print information of current thread
   printf("tid : %d , sleeping : %d\n",thread_current()->tid,list_size(&sleep_list));
 }
 
-void print_list(struct list l){ // print whole members of input list
-  int i =0;
-  struct list_elem *e;
-  printf("NOW : %d\n",kernel_ticks);
-  printf("Sleeping list :\n");
-  if(list_size(&l)==0){
-    printf("Empty list\n\n");
-  }
-  for(e= list_begin(&sleep_list);e!=list_end(&sleep_list); ){
-    printf("#%d<tid:%d, name:%s end:%d>\n",i++,list_entry(e,struct thread, elem)->tid,list_entry(e,struct thread, elem)->name, list_entry(e,struct thread, elem)->endtime);
-    e = list_next(e);
-  }
-  printf("\n\n");
-}
+// void print_list(struct list l){ // print whole members of input list
+//   int i =0;
+//   struct list_elem *e;
+//   printf("NOW : %d\n",kernel_ticks);
+//   printf("Sleeping list :\n");
+//   if(list_size(&l)==0){
+//     printf("Empty list\n\n");
+//   }
+//   for(e= list_begin(&sleep_list);e!=list_end(&sleep_list); ){
+//     printf("#%d<tid:%d, name:%s end:%d>\n",i++,list_entry(e,struct thread, elem)->tid,list_entry(e,struct thread, elem)->name, list_entry(e,struct thread, elem)->endtime);
+//     e = list_next(e);
+//   }
+//   printf("\n\n");
+// }
 
 /* Prints thread statistics. */
 void
@@ -565,7 +575,7 @@ static void
 init_thread (struct thread *t, const char *name, int priority)
 {
   enum intr_level old_level;
-
+  
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
@@ -577,6 +587,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->real_priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init(&t->lock_list);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
