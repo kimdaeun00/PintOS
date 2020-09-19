@@ -88,6 +88,7 @@ CS330 PintOS project1
 #####    thread.c
 >   Added
 >		>		1. bool less_lock(struct list_elem*, struct list_elem*, void*) : lock.semaphore.waiters의 제일 앞에 있는 elem의 priority를 비교
+>   >   2. bool less_sema(struct list_elem*, struct list_elem*, struct thread*)
 
 #####    thread.c
 >   Modified
@@ -102,4 +103,4 @@ CS330 PintOS project1
 >		>		1. sema_up() : sema.waiters sort를 sema.waiters중 첫번째 thread를 unblock하기 전에 추가
 >   >   2. lock_acquire() : semaphore.value가 0일 시 current thread의 waiting lock에 그 lock 할당, acquire_sync()로 priority 동기화
 >   >   3. lock_release() : lock을 lock_list에서 삭제하고 release_sync로 holding중인 lock들의 waiters중에서 가장 priority가 큰 것을 donated priority로 설정,lock의 holder를 waiters 가장 앞에 있던 thread로 설정
-
+>   >   4. cond_wait() : cond_waiters에 priority 순서대로 추가
