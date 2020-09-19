@@ -39,30 +39,62 @@ CS330 PintOS project1
 
 >   Modified
 >   >   1.	thread_unblock()	:	list_push_back이 아닌 thread_insert_ready() 함수를 통해 ready list 에 추가
->		>		2.	thread_yeild()	:	list_push_back이 아닌 thread_insert_ready() 함수를 통해 ready list 에 추가
->		>		3. 	thread_unblock()	: unblock시에 current thread의 priority가 최대가 아닌 경우 다시 yeild를 하도록 추가함
->		>		4.	thread_set_priority()	:	 current thread의 priority가 최대가 아닌 경우 다시 yeild를 하도록 추가함
+>		>		2.	thread_yield()	:	list_push_back이 아닌 thread_insert_ready() 함수를 통해 ready list 에 추가
+>		>		3. 	thread_unblock()	: unblock시에 current thread의 priority가 최대가 아닌 경우 다시 yield를 하도록 추가함
+>		>		4.	thread_set_priority()	:	 current thread의 priority가 최대가 아닌 경우 다시 yield를 하도록 추가함
 
 #####    timer.c    
 >   Modified    
 >    >  1.  timer_interrupt():  thread_tick 마다 thread_wake()를 실행하여 깨울 Thread sleep_list에서 꺼내기
 
 ---
-### Day 3  (Sep 16th) : Commit 
+### Day 3  (Sep 16th) : Commit #4
 #### Main issue : Priority(sema, donate-one)
 #####    thread.h
 >   Added
->		>		1. int real_priority : original priority of thread	
+>		>		1. int real_priority : original priority of thread	(in struct thread)
 
 #####    thread.c
 
 >   Modified
 >   >   1. init_priority() :  real_priority 
 
-#####   	synch.c    
+#####   	synch.c 
 >   Modified    
 >   >  	1.  sema_up()	: sema++ 하는 코드를 if stamement 이전으로 변경
 >		>		2.	sema_down()	:	wating list 에 추가하는 방식을 insert_ordered를 사용하는 방식으로 변경
 >		>		3.	lock_aquire()	:	semaphore가 down 되어 있는 경우 추가할때마다 waiting list에서 가장 큰 priority 값으로 holder값을 변경
 >		>		4.	lock_release()	:	release할 경우 holder의 priority를 real값으로 변경, lock의 holder를 waiters의 첫번째 thread로 설정
 
+---
+### Day 4  (Sep 17th) : Commit #5
+#### Main issue : Priority(fifo, sema, change)
+#####    thread.c
+>   Modified
+>		>		1. thread_set_priority() : new_priority를 real_priority와 priority에 대해 비교하여 donated된 priority보다 높으면 new_priority를 set, 그렇지 않으면 new_priority를 real_priority에만 set 
+
+---
+### Day 5  (Sep 18th) : Commit #6,7
+#### Main issue : Priority(nested, multiple donation), Condvar
+#####    synch.h
+>   Added
+>		>		1. struct list_elem elem (in struct lock)
+
+#####    thread.h
+>   Added
+>		>		1. struct lock * waiting_lock (in struct thread)
+>   >   2. struct list lock_list  (in struct thread)
+
+#####    thread.c
+>   Added
+>		>		1. bool less_lock(struct list_elem*, struct list_elem*, void*) : lock.semaphore.waiters의 제일 앞에 있는 elem의 priority를 비교
+
+#####    thread.c
+>   Modified
+>   >   1. init_thread() : thread의 lock_list initialization 추가
+
+#####    synch.c
+>   Modified
+>		>		1. sema_up() : 
+>   >   2. lock_acquire() :
+>   >   2. lock_release() :
