@@ -94,7 +94,12 @@ CS330 PintOS project1
 >   >   1. init_thread() : thread의 lock_list initialization 추가
 
 #####    synch.c
+>   Added
+>   >   1. acquire_sync() : lock_acquire를 call한 thread의 priority가 현재 lock.holder의 priority보다 높을 때 priority donation이 재귀적으로 발생
+>   >   2. release_sync() : thread가 holding하고 있던 lock들의 semaphore.waiters의 front thread중 가장 priority가 높은 것을 thread의 priority로 설정
+
 >   Modified
->		>		1. sema_up() : 
->   >   2. lock_acquire() :
->   >   2. lock_release() :
+>		>		1. sema_up() : sema.waiters sort를 sema.waiters중 첫번째 thread를 unblock하기 전에 추가
+>   >   2. lock_acquire() : semaphore.value가 0일 시 current thread의 waiting lock에 그 lock 할당, acquire_sync()로 priority 동기화
+>   >   3. lock_release() : lock을 lock_list에서 삭제하고 release_sync로 holding중인 lock들의 waiters중에서 가장 priority가 큰 것을 donated priority로 설정,lock의 holder를 waiters 가장 앞에 있던 thread로 설정
+
