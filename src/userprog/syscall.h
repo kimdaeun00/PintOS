@@ -6,7 +6,6 @@
 // #include "../filesys/file.c"
 #include "../devices/shutdown.h"
 #include "process.h"
-#include "userprog/pagedir.h"
 #include "../devices/input.h"
 
 void syscall_init (void);

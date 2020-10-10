@@ -133,7 +133,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
   list_init (&sleep_list);
-
+  
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -277,7 +277,7 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
-
+  printf("!!!\n");
   ASSERT (function != NULL);
 
   /* Allocate thread. */
@@ -303,6 +303,10 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+  
+  /*add to current thread's child list*/
+  list_push_back(&thread_current()->child_list,&t->child_elem);
+
   /* Add to run queue. */
   thread_unblock (t);
   return tid;
@@ -590,6 +594,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_init(&t->lock_list);
   list_init(&t->fd_list);
+  list_init(&t->child_list);
+
+  struct lock * temp = (struct lock *)malloc(sizeof(struct lock));
+  memcpy(t->thread_lock,temp,sizeof(struct lock *));
+  lock_init(t->thread_lock);
+  t->exit_status = -1;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
