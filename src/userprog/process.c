@@ -21,6 +21,94 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+int
+ get_argc(char* file_name)
+ {
+  char *token, *save_ptr;
+  int argc = 0;
+  
+  char * temp = (char*)malloc(strlen(file_name));
+  strlcpy(temp,file_name,256);
+
+  for (token = strtok_r (temp, " ", &save_ptr); token != NULL;
+        token = strtok_r (NULL, " ", &save_ptr))
+    {
+      argc++;
+    }
+  return argc;
+ }
+
+ 
+char **
+get_argv(char* file_name)
+{
+
+  char * temp = (char*)malloc(strlen(file_name));
+  strlcpy(temp,file_name,256);
+
+  char *token, *save_ptr;
+  int argc = get_argc(file_name);
+  char **argv = (char**)malloc(argc * sizeof(char*));
+  int i = 0;
+  for (token = strtok_r (temp, " ", &save_ptr); token != NULL;
+        token = strtok_r (NULL, " ", &save_ptr))
+    argv[i++] = token;
+  return argv;
+}
+
+void
+stack_put(char** argv,int argc, void **esp) 
+{
+  int word_align = calculate_word_align(argc,argv);
+  void *address[argc];
+  //스택에 argv 쌓기 , esp 더해주기
+  for(int i = argc-1;i>=0;i--){
+    *esp -= strlen(argv[i]) + 1;
+    strlcpy(*esp,argv[i],strlen(argv[i])+1);
+    address[i] = *esp;
+  }
+  //스택에 word_allign 쌓기 : error case : esp값을 어떻게 설정해주어야 하느지 모르겠음
+  *esp -= word_align;
+  void *null = (void*)calloc(1,word_align);
+  memcpy(*esp,null,word_align);
+  
+  //push argv[] address
+  *esp -= 4;
+  **(int**)esp = 0;
+  //argv push
+  for(int i=argc-1;i>=0;i--){
+    *esp -= 4;
+    **(int**)esp = address[i];
+  }
+  void *argv_address = *esp;
+  //push argv
+  *esp -= 4;
+  **(int**)esp = argv_address;
+  *esp -= 4;
+  **(int**)esp = argc;
+  *esp -= 4;
+  **(int**)esp = 0;
+  // hex_dump(*esp,*esp,100,1);  
+}
+
+int
+calculate_word_align(int argc, char **argv)
+{
+  int total_length = 0 ;
+  for(int i=0;i<argc;i++ ){
+    total_length += strlen(argv[i])+1;
+  }
+  int aligned;
+  if(total_length %4 ==0)
+    aligned = 0;
+  else
+    aligned = 4 - total_length%4;
+
+  return aligned;
+}
+
+
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -29,17 +117,18 @@ tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
+  char *thread_name;
   tid_t tid;
-
+  
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
+  thread_name = get_argv((char *)file_name)[0];
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -53,14 +142,18 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
-
+  char **argv = get_argv((char *)file_name);
+  int argc = get_argc((char*)file_name);
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
-
+  success = load (argv[0], &if_.eip, &if_.esp);
+  
+  if(success){
+     stack_put(argv,argc,&if_.esp);
+   }
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
@@ -88,6 +181,8 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  // while(1){}
+  for(int i=0;i<1000000000;i++){}
   return -1;
 }
 
@@ -97,7 +192,6 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

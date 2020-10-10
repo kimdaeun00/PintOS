@@ -1,10 +1,12 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
+#define USERPROG
 
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -93,10 +95,12 @@ struct thread
    int real_priority;                  /*original priority before/after donation*/
    struct lock *waiting_lock;
    struct list lock_list;
+   struct list fd_list;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+   int exit_status;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */

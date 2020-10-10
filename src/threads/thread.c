@@ -146,6 +146,7 @@ thread_init (void)
 void
 thread_start (void) 
 {
+  
   /* Create the idle thread. */
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
@@ -189,6 +190,7 @@ thread_tick (void)
 void
 thread_wake(int64_t ticks)
 {
+  // printf("wake : %s\n",thread_current()->name );
   current_ticks = ticks;
   while(!list_empty(&sleep_list) && (list_entry(list_back(&sleep_list), struct thread, elem) -> endtime) <= ticks){
     struct thread *temp = list_entry(list_pop_back(&sleep_list),struct thread, elem);
@@ -201,6 +203,7 @@ thread_wake(int64_t ticks)
 
 void
 thread_insert_sleep(int64_t endtime){
+  
   struct thread *t = thread_current ();
   // printf("%lld current : %d %s end at %d\n",kernel_ticks,t->tid,t->name,endtime);
   t->endtime = endtime;
@@ -302,7 +305,6 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
   /* Add to run queue. */
   thread_unblock (t);
-
   return tid;
 }
 
@@ -317,7 +319,6 @@ thread_block (void)
 {
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
-
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
 }
@@ -334,19 +335,19 @@ void
 thread_unblock (struct thread *t) 
 {
   enum intr_level old_level;
-  // msg("unblock : %s",&t->name);
+  // printf("unblock : %s\n",&t->name);
 
   ASSERT (is_thread (t));
-
   old_level = intr_disable ();
+  
   ASSERT (t->status == THREAD_BLOCKED);
   thread_insert_ready(t);
   t->status = THREAD_READY;
-  if(thread_current() != idle_thread && !list_empty(&ready_list) && thread_current()->priority <= list_entry(list_front(&ready_list), struct thread, elem) -> priority){
-    // msg("%s",thread_current()->name);
+  if(thread_current() != idle_thread && !list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem) -> priority){
+    // printf("yield in unblock\n");
     thread_yield();
   }
-  
+  // printf("no yeild in unblock\n");  
   intr_set_level (old_level);
 }
 
@@ -389,8 +390,9 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
-
+  
 #ifdef USERPROG
+  printf("%s: exit(%d)\n",thread_current()->name,thread_current()->exit_status);
   process_exit ();
 #endif
 
@@ -412,7 +414,6 @@ thread_yield (void)
   struct thread *cur = thread_current ();
   // printf("yeild : %s\n",cur->name);
   enum intr_level old_level;
-  
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
@@ -588,6 +589,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->real_priority = priority;
   t->magic = THREAD_MAGIC;
   list_init(&t->lock_list);
+  list_init(&t->fd_list);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

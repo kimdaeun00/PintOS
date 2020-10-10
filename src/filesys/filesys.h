@@ -2,6 +2,8 @@
 #define FILESYS_FILESYS_H
 
 #include <stdbool.h>
+#include <filesys/file.h>
+#include <list.h>
 #include "filesys/off_t.h"
 
 /* Sectors of system file inodes. */
@@ -10,6 +12,15 @@
 
 /* Block device that contains the file system. */
 extern struct block *fs_device;
+
+
+struct file_descriptor
+{
+  int fd;
+  struct file* file;
+  struct list_elem elem;
+};
+
 
 void filesys_init (bool format);
 void filesys_done (void);
