@@ -139,7 +139,7 @@ syscall_handler(struct intr_frame *f)
     break;
 
   case SYS_WAIT:
-
+    process_wait(*(tid_t*)(esp+1));
     break;
 
   case SYS_CREATE:

@@ -152,7 +152,7 @@ start_process (void *file_name_)
   success = load (argv[0], &if_.eip, &if_.esp);
   
   if(success){
-    lock_acquire(thread_current()->thread_lock);
+
      stack_put(argv,argc,&if_.esp);
    }
   /* If load failed, quit. */
@@ -182,21 +182,23 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  struct list_elem* e;
-  struct list  *child_list = &thread_current()->child_list;
-  struct thread target;
-  for (e=list_begin(child_list);e!=list_end(child_list);e=list_next(e)){
-    target = *list_entry(e,struct thread, child_elem);
-    if(target.tid == child_tid){
-      break;
-    }
+  // struct list_elem* e;
+  // struct list  *child_list = &thread_current()->child_list;
+  // struct thread target;
+  // for (e=list_begin(child_list);e!=list_end(child_list);e=list_next(e)){
+  //   target = *list_entry(e,struct thread, child_elem);
+  //   if(target.tid == child_tid){
+  //     break;
+  //   }
+  // }
+  // int result;
+  // lock_acquire(target.thread_lock);
+  // result = target.exit_status;
+  // lock_release(target.thread_lock);
+  // return result;
+  for(int i=0;i<2000000000;i++){}
   }
-  int result;
-  lock_acquire(target.thread_lock);
-  result = target.exit_status;
-  lock_release(target.thread_lock);
-  return result;
-}
+
 
 /* Free the current process's resources. */
 void
@@ -220,7 +222,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  lock_release(cur->thread_lock);
+
 }
 
 /* Sets up the CPU for running user code in the current

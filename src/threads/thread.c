@@ -277,7 +277,7 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
-  printf("!!!\n");
+  // printf("!!!\n");
   ASSERT (function != NULL);
 
   /* Allocate thread. */
@@ -305,7 +305,7 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
   
   /*add to current thread's child list*/
-  list_push_back(&thread_current()->child_list,&t->child_elem);
+  // list_push_back(&thread_current()->child_list,&t->child_elem);
 
   /* Add to run queue. */
   thread_unblock (t);
@@ -594,11 +594,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   list_init(&t->lock_list);
   list_init(&t->fd_list);
-  list_init(&t->child_list);
 
-  struct lock * temp = (struct lock *)malloc(sizeof(struct lock));
-  memcpy(t->thread_lock,temp,sizeof(struct lock *));
-  lock_init(t->thread_lock);
   t->exit_status = -1;
 
   old_level = intr_disable ();

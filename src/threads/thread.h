@@ -96,12 +96,11 @@ struct thread
    struct lock *waiting_lock;
    struct list lock_list;
    struct list fd_list;
-   struct list child_list;
+
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct list_elem child_elem;
-    struct lock *thread_lock;
+
 
 
    int exit_status;
