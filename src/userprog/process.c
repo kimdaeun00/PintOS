@@ -120,6 +120,7 @@ process_execute (const char *file_name)
   char *thread_name;
   tid_t tid;
   
+  
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -152,7 +153,7 @@ start_process (void *file_name_)
   success = load (argv[0], &if_.eip, &if_.esp);
   
   if(success){
-    lock_acquire(thread_current()->thread_lock);
+    // lock_acquire(&thread_current()->thread_sync);
      stack_put(argv,argc,&if_.esp);
    }
   /* If load failed, quit. */
@@ -182,6 +183,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
+  
   struct list_elem* e;
   struct list  *child_list = &thread_current()->child_list;
   struct thread target;
@@ -191,10 +193,11 @@ process_wait (tid_t child_tid)
       break;
     }
   }
+
   int result;
-  lock_acquire(target.thread_lock);
+  lock_acquire(&target.thread_sync);
   result = target.exit_status;
-  lock_release(target.thread_lock);
+
   return result;
 }
 
@@ -202,6 +205,7 @@ process_wait (tid_t child_tid)
 void
 process_exit (void)
 {
+  // printf("process exit\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
   /* Destroy the current process's page directory and switch back
@@ -220,7 +224,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  lock_release(cur->thread_lock);
+  lock_release(&cur->thread_sync);
+  // printf("process exit done\n");
 }
 
 /* Sets up the CPU for running user code in the current

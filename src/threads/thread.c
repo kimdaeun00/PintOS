@@ -137,8 +137,11 @@ thread_init (void)
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
+  
+
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -277,7 +280,6 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
-  printf("!!!\n");
   ASSERT (function != NULL);
 
   /* Allocate thread. */
@@ -396,6 +398,7 @@ thread_exit (void)
   ASSERT (!intr_context ());
   
 #ifdef USERPROG
+  // printf("thread exit\n");
   printf("%s: exit(%d)\n",thread_current()->name,thread_current()->exit_status);
   process_exit ();
 #endif
@@ -580,11 +583,10 @@ static void
 init_thread (struct thread *t, const char *name, int priority)
 {
   enum intr_level old_level;
-  
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
-
+  
   memset (t, 0, sizeof *t);
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
@@ -595,11 +597,14 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->lock_list);
   list_init(&t->fd_list);
   list_init(&t->child_list);
-
-  struct lock * temp = (struct lock *)malloc(sizeof(struct lock));
-  memcpy(t->thread_lock,temp,sizeof(struct lock *));
-  lock_init(t->thread_lock);
+  
   t->exit_status = -1;
+
+  lock_init(&t->thread_sync);
+  t->thread_sync.holder = t;
+  sema_down(&t->thread_sync.semaphore);
+  t->thread_sync.for_wait = true;
+
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

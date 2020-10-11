@@ -10,6 +10,8 @@
 int
 main (int argc, char **argv)
 {
-  halt();
+  // halt();
+  printf("hi there!\n");
+  exit(32);
   /* not reached */
 }

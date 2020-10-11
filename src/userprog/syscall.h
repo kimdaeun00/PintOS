@@ -11,7 +11,7 @@
 void syscall_init (void);
 void halt(void);
 void exit(int);
-void exec(const char*);
+tid_t exec(const char*);
 int wait(tid_t);
 bool create(const char*, unsigned);
 bool remove(const char* );

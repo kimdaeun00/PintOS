@@ -107,7 +107,7 @@ static void
 syscall_handler(struct intr_frame *f)
 {
   int *esp = (int *)(f->esp);
-  // printf("%p\n",*esp);
+  // printf("%d\n",*esp);
   // hex_dump(esp,esp,100,1);
   // printf("%d\n",*(char *)(((char *)(esp))+3));
   if (pagedir_get_page(thread_current()->pagedir, esp) == NULL)
@@ -118,7 +118,6 @@ syscall_handler(struct intr_frame *f)
   switch (*esp)
   {
   case SYS_HALT:
-
     if (!is_userspace(esp, 0))
     {
       exit(-1);
@@ -135,11 +134,19 @@ syscall_handler(struct intr_frame *f)
     break;
 
   case SYS_EXEC:
-    // exec((char *)(*(esp+1)));
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    f->eax=exec((char *)(*(esp+1)));
     break;
 
   case SYS_WAIT:
-
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    f->eax=wait((int*)(*esp+1));
     break;
 
   case SYS_CREATE:
@@ -230,7 +237,7 @@ void exit(int status)
   thread_exit();
 }
 
-void exec(const char *cmd_line)
+tid_t exec(const char *cmd_line)
 {
   if (!is_user_vaddr(cmd_line)){
     exit(-1);
@@ -239,14 +246,18 @@ void exec(const char *cmd_line)
   {
     exit(-1);
   }
-  lock_acquire(&sys_lock);
-  process_execute(cmd_line);
-  lock_release(&sys_lock);
+  // lock_acquire(&sys_lock);
+  int result= process_execute(cmd_line);
+  // lock_release(&sys_lock);
+  return result;
 }
 
 int wait(tid_t pid)
 {
-  return process_wait(pid);
+  // lock_acquire(&sys_lock);
+  int result = process_wait(pid);
+  // lock_release(&sys_lock);
+  return result;
 }
 
 bool create(const char *file, unsigned initial_size)

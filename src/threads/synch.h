@@ -23,6 +23,7 @@ struct lock
     struct thread *holder;      /* Thread holding lock (for debugging). */
     struct semaphore semaphore; /* Binary semaphore controlling access. */
     struct list_elem elem;
+    bool for_wait;
   };
 
 void acquire_sync(struct lock *, struct thread *);

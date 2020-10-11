@@ -101,7 +101,7 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     struct list_elem child_elem;
-    struct lock *thread_lock;
+    struct lock thread_sync;
 
 
    int exit_status;

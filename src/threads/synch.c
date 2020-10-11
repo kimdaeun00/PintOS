@@ -177,9 +177,9 @@ void
 lock_init (struct lock *lock)
 {
   ASSERT (lock != NULL);
-
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  lock->for_wait = false;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -196,11 +196,10 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
-if(!lock->semaphore.value){
-  thread_current()->waiting_lock=lock;
-  acquire_sync(lock, thread_current());
-}
+  if(!lock->semaphore.value){
+    thread_current()->waiting_lock=lock;
+    acquire_sync(lock, thread_current());
+  }
   sema_down (&lock->semaphore);
   
   lock->holder = thread_current ();
@@ -252,7 +251,9 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  list_remove(&lock->elem);
+  if(!lock->for_wait) //if lock used for synchronization
+    list_remove(&lock->elem);
+    
   release_sync(lock->holder);
   if(!list_empty(&lock->semaphore.waiters)){
     lock->holder = list_entry(list_front(&lock->semaphore.waiters), struct thread, elem);
