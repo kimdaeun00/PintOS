@@ -119,7 +119,6 @@ process_execute (const char *file_name)
   char *fn_copy;
   char *thread_name;
   tid_t tid;
-  
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -152,7 +151,6 @@ start_process (void *file_name_)
   success = load (argv[0], &if_.eip, &if_.esp);
   
   if(success){
-
      stack_put(argv,argc,&if_.esp);
    }
   /* If load failed, quit. */
@@ -182,23 +180,21 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  // struct list_elem* e;
-  // struct list  *child_list = &thread_current()->child_list;
-  // struct thread target;
-  // for (e=list_begin(child_list);e!=list_end(child_list);e=list_next(e)){
-  //   target = *list_entry(e,struct thread, child_elem);
-  //   if(target.tid == child_tid){
-  //     break;
-  //   }
-  // }
-  // int result;
-  // lock_acquire(target.thread_lock);
-  // result = target.exit_status;
-  // lock_release(target.thread_lock);
-  // return result;
-  for(int i=0;i<2000000000;i++){}
+  struct list_elem* e;
+  struct list  *child_list = &thread_current()->child_list;
+  int result;
+  struct thread *target;
+  for (e=list_begin(child_list);e!=list_end(child_list);e=list_next(e)){
+    target = list_entry(e,struct thread, child_elem);
+    if(target->tid == child_tid){
+      break;
+    }
   }
-
+  // printf("%d & %d",target->tid,child_tid);
+  result = target->exit_status;
+  sema_down(&target->sync_sema);
+  return result;
+}
 
 /* Free the current process's resources. */
 void
@@ -222,6 +218,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  list_remove(&cur->child_elem);
+  sema_up(&cur->sync_sema);
 
 }
 
@@ -329,7 +327,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
   if (t->pagedir == NULL) 
     goto done;
   process_activate ();
-
   /* Open executable file. */
   file = filesys_open (file_name);
   if (file == NULL) 
@@ -337,7 +334,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
-
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)

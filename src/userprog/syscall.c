@@ -135,11 +135,19 @@ syscall_handler(struct intr_frame *f)
     break;
 
   case SYS_EXEC:
-    // exec((char *)(*(esp+1)));
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    f->eax = exec((char *)(*(esp+1)));
     break;
 
   case SYS_WAIT:
-    process_wait(*(tid_t*)(esp+1));
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    f->eax = process_wait(*(tid_t*)(esp+1));
     break;
 
   case SYS_CREATE:
@@ -230,7 +238,7 @@ void exit(int status)
   thread_exit();
 }
 
-void exec(const char *cmd_line)
+tid_t exec(const char *cmd_line)
 {
   if (!is_user_vaddr(cmd_line)){
     exit(-1);
@@ -239,15 +247,19 @@ void exec(const char *cmd_line)
   {
     exit(-1);
   }
+  tid_t result;
   lock_acquire(&sys_lock);
-  process_execute(cmd_line);
+  result = process_execute(cmd_line);
   lock_release(&sys_lock);
+  return result;
 }
+
 
 int wait(tid_t pid)
 {
   return process_wait(pid);
 }
+
 
 bool create(const char *file, unsigned initial_size)
 {

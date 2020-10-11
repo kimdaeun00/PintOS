@@ -102,11 +102,13 @@ struct thread
     struct list_elem elem;              /* List element. */
 
 
-
-   int exit_status;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
+   int exit_status;
+   uint32_t *pagedir;                  /* Page directory. */
+   struct semaphore sync_sema;
+   struct list child_list;
+   struct list_elem child_elem;
 #endif
 
     /* Owned by thread.c. */
