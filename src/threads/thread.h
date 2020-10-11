@@ -95,18 +95,19 @@ struct thread
    int real_priority;                  /*original priority before/after donation*/
    struct lock *waiting_lock;
    struct list lock_list;
-   struct list fd_list;
-   struct list child_list;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct list_elem child_elem;
-    struct lock thread_sync;
+    
 
 
    int exit_status;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
+   struct lock thread_sync;
+   struct list fd_list;
+   struct list child_list;
+    struct list_elem child_elem;
     uint32_t *pagedir;                  /* Page directory. */
 #endif
 

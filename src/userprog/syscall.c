@@ -234,6 +234,7 @@ void halt(void)
 void exit(int status)
 {
   thread_current()->exit_status = status;
+  printf("status : %d\n",status);
   thread_exit();
 }
 
@@ -246,9 +247,9 @@ tid_t exec(const char *cmd_line)
   {
     exit(-1);
   }
-  // lock_acquire(&sys_lock);
+  lock_acquire(&sys_lock);
   int result= process_execute(cmd_line);
-  // lock_release(&sys_lock);
+  lock_release(&sys_lock);
   return result;
 }
 

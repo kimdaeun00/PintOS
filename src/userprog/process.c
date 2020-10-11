@@ -129,6 +129,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
   thread_name = get_argv((char *)file_name)[0];
   /* Create a new thread to execute FILE_NAME. */
+  // printf("excuting : %s\n",file_name);
   tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
@@ -156,6 +157,7 @@ start_process (void *file_name_)
     // lock_acquire(&thread_current()->thread_sync);
      stack_put(argv,argc,&if_.esp);
    }
+  //  printf("starting : %s\n",file_name);
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
@@ -193,9 +195,10 @@ process_wait (tid_t child_tid)
       break;
     }
   }
-
+  // printf("%s is waiting for : %s\n",thread_current()->name,target.name);
   int result;
   lock_acquire(&target.thread_sync);
+  list_remove(&target.child_elem);
   result = target.exit_status;
 
   return result;
@@ -207,6 +210,7 @@ process_exit (void)
 {
   // printf("process exit\n");
   struct thread *cur = thread_current ();
+  // printf("exiting : %s\n",cur->name);
   uint32_t *pd;
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -225,7 +229,6 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   lock_release(&cur->thread_sync);
-  // printf("process exit done\n");
 }
 
 /* Sets up the CPU for running user code in the current

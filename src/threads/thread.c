@@ -20,6 +20,24 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+void print_l(struct list *list)
+{
+  printf("Print Start\n");
+  if (list_empty(list))
+  {
+    printf("list is empty\n");
+  }
+
+  struct list_elem *e;
+  struct list_elem temp;
+
+  for (e = list_begin(list); e->next != NULL; e = list_next(e))
+  {
+    printf("thread : %s\n", list_entry(e, struct thread, elem)->name);
+  }
+  printf("Print End\n");
+}
+
 /*less function for list_method argument*/
 bool less_lock(const struct list_elem *a, const struct list_elem *b, void *aux){
   int64_t priority_a = list_entry(list_front(&list_entry(a, struct lock, elem) -> semaphore .waiters),struct thread, elem)->priority;
@@ -308,7 +326,6 @@ thread_create (const char *name, int priority,
   
   /*add to current thread's child list*/
   list_push_back(&thread_current()->child_list,&t->child_elem);
-
   /* Add to run queue. */
   thread_unblock (t);
   return tid;
@@ -390,6 +407,7 @@ thread_tid (void)
   return thread_current ()->tid;
 }
 
+
 /* Deschedules the current thread and destroys it.  Never
    returns to the caller. */
 void
@@ -397,9 +415,8 @@ thread_exit (void)
 {
   ASSERT (!intr_context ());
   
+  struct thread *curr = thread_current();
 #ifdef USERPROG
-  // printf("thread exit\n");
-  printf("%s: exit(%d)\n",thread_current()->name,thread_current()->exit_status);
   process_exit ();
 #endif
 
@@ -407,8 +424,9 @@ thread_exit (void)
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
   intr_disable ();
+  // print_l(&curr->thread_sync.semaphore.waiters);
   list_remove (&thread_current()->allelem);
-  thread_current ()->status = THREAD_DYING;
+  thread_current()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
 }
@@ -599,7 +617,6 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->child_list);
   
   t->exit_status = -1;
-
   lock_init(&t->thread_sync);
   t->thread_sync.holder = t;
   sema_down(&t->thread_sync.semaphore);

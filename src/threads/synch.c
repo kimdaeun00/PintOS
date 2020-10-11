@@ -181,7 +181,23 @@ lock_init (struct lock *lock)
   sema_init (&lock->semaphore, 1);
   lock->for_wait = false;
 }
+void print_ll(struct list *list)
+{
+  printf("Print Start\n");
+  if (list_empty(list))
+  {
+    printf("list is empty\n");
+  }
 
+  struct list_elem *e;
+  struct list_elem temp;
+
+  for (e = list_begin(list); e->next != NULL; e = list_next(e))
+  {
+    printf("thread : %s\n", list_entry(e, struct thread, elem)->name);
+  }
+  printf("Print End\n");
+}
 /* Acquires LOCK, sleeping until it becomes available if
    necessary.  The lock must not already be held by the current
    thread.
@@ -200,10 +216,15 @@ lock_acquire (struct lock *lock)
     thread_current()->waiting_lock=lock;
     acquire_sync(lock, thread_current());
   }
+  printf("!!");
   sema_down (&lock->semaphore);
   
   lock->holder = thread_current ();
   list_push_back(&thread_current()->lock_list,&lock->elem);
+  // if(lock->for_wait){
+  //   printf("lock holder : %s\n",lock->holder->name);
+  //   print_ll(&lock->semaphore.waiters);
+  // }
   // list_insert_ordered(&lock->holder->lock_list,&lock->elem,less_lock,NULL);
   
 }
@@ -253,7 +274,7 @@ lock_release (struct lock *lock)
 
   if(!lock->for_wait) //if lock used for synchronization
     list_remove(&lock->elem);
-    
+
   release_sync(lock->holder);
   if(!list_empty(&lock->semaphore.waiters)){
     lock->holder = list_entry(list_front(&lock->semaphore.waiters), struct thread, elem);
