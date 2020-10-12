@@ -147,7 +147,7 @@ syscall_handler(struct intr_frame *f)
     {
       exit(-1);
     }
-    f->eax = process_wait(*(tid_t*)(esp+1));
+    f->eax = wait(*(tid_t*)(esp+1));
     break;
 
   case SYS_CREATE:
@@ -333,13 +333,15 @@ int open(const char *file)
   e->prev = NULL;
   struct file_descriptor *fd = (struct file_descriptor *)malloc(sizeof(struct file_descriptor));
   memcpy(&(fd->fd),&new_fd,sizeof(int));
+  strlcpy(&(fd->name),file,strlen(file)+1);
   memcpy(&(fd->file),&open_file,sizeof(struct file *));
   memcpy(&(fd->elem),e,sizeof(struct list_elem));
-  // print_list(&thread_current()->fd_list);
   list_push_back(&thread_current()->fd_list, &fd->elem);
-  // print_list(&thread_current()->fd_list);
+  
+  printf("%s , %s %s\n",fd->name,thread_current()->name,file);
+  if(strcmp(thread_current()->name,file)==0 )
+    file_deny_write(open_file);
   lock_release(&sys_lock);
-  // printf("open end\n");
   return new_fd;
 }
 
@@ -410,6 +412,9 @@ int write(int fd, const void *buffer, unsigned size)
       lock_release(&sys_lock);
       return -1;
     }
+
+    if(!strcmp(file->name, thread_current()->name))
+      file_deny_write(file->file);
     result = file_write(file->file, buffer, size);
     lock_release(&sys_lock);
     return result;

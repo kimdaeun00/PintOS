@@ -109,6 +109,7 @@ struct thread
    struct semaphore sync_sema;
    struct list child_list;
    struct list_elem child_elem;
+   struct semaphore sync;
 #endif
 
     /* Owned by thread.c. */

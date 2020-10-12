@@ -398,7 +398,6 @@ thread_exit (void)
 #ifdef USERPROG
   printf("%s: exit(%d)\n",thread_current()->name,thread_current()->exit_status);
   process_exit ();
-
 #endif
 
   /* Remove thread from all threads list, set our status to dying,
@@ -406,7 +405,6 @@ thread_exit (void)
      when it calls thread_schedule_tail(). */
   intr_disable ();
   list_remove (&thread_current()->allelem);
-  struct thread *a = thread_current;
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -598,6 +596,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->fd_list);
   list_init(&t->child_list);
   sema_init(&t->sync_sema,0);
+  sema_init(&t->sync,0);
 
   list_push_back(&running_thread()->child_list,&t->child_elem);
 

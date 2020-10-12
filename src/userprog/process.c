@@ -26,9 +26,8 @@ int
  {
   char *token, *save_ptr;
   int argc = 0;
-  
-  char * temp = (char*)malloc(strlen(file_name));
-  strlcpy(temp,file_name,256);
+  char * temp = (char*)malloc(128);
+  strlcpy(temp,file_name,strlen(file_name)+1);
 
   for (token = strtok_r (temp, " ", &save_ptr); token != NULL;
         token = strtok_r (NULL, " ", &save_ptr))
@@ -42,13 +41,15 @@ int
 char **
 get_argv(char* file_name)
 {
+  char * temp = (char*)malloc(128);
+  strlcpy(temp,file_name,strlen(file_name)+1);
 
-  char * temp = (char*)malloc(strlen(file_name));
-  strlcpy(temp,file_name,256);
-
+  
   char *token, *save_ptr;
   int argc = get_argc(file_name);
-  char **argv = (char**)malloc(argc * sizeof(char*));
+
+  char ** argv = (char**)malloc(argc * sizeof(char *));
+
   int i = 0;
   for (token = strtok_r (temp, " ", &save_ptr); token != NULL;
         token = strtok_r (NULL, " ", &save_ptr))
@@ -125,12 +126,18 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+  // printf("%s\n",*get_argv((char *)file_name));
   thread_name = get_argv((char *)file_name)[0];
   /* Create a new thread to execute FILE_NAME. */
+  if(filesys_open(thread_name)==NULL){
+    return -1;
+  }
   tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
+  // return process_wait(tid);
 }
 
 /* A thread function that loads a user process and starts it
@@ -184,15 +191,21 @@ process_wait (tid_t child_tid)
   struct list  *child_list = &thread_current()->child_list;
   int result;
   struct thread *target;
+  bool find_child = false;
   for (e=list_begin(child_list);e!=list_end(child_list);e=list_next(e)){
     target = list_entry(e,struct thread, child_elem);
     if(target->tid == child_tid){
+      find_child = true;
       break;
     }
   }
-  // printf("%d & %d",target->tid,child_tid);
-  result = target->exit_status;
+  if(!find_child){
+    return -1;
+  }
   sema_down(&target->sync_sema);
+  // printf("process_wait exit status(child) = %d\n", target->exit_status);
+  result = target->exit_status;
+  sema_up(&target->sync);
   return result;
 }
 
@@ -220,7 +233,9 @@ process_exit (void)
     }
   list_remove(&cur->child_elem);
   sema_up(&cur->sync_sema);
-
+  sema_down(&cur->sync);
+  // printf("process_exit exit status = %d\n", cur->exit_status);
+  
 }
 
 /* Sets up the CPU for running user code in the current
@@ -333,7 +348,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     {
       printf ("load: %s: open failed\n", file_name);
       goto done; 
-    }
+    }  
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
