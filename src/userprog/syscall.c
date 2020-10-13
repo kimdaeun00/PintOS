@@ -79,6 +79,21 @@ static struct file_descriptor *fd_to_fd(int fd)
   return NULL;
 }
 
+static void is_valid_arg(void* p){
+    if (!is_user_vaddr(p)){
+    exit(-1);
+  }
+
+  if (pagedir_get_page(thread_current()->pagedir, p) == NULL)
+  {
+    exit(-1);
+  }
+  if (pagedir_get_page(thread_current()->pagedir, ((const char*)p)+1) == NULL)
+  {
+    exit(-1);
+  }
+}
+
 static bool is_userspace(int *esp, int n)
 {
   
@@ -148,9 +163,6 @@ syscall_handler(struct intr_frame *f)
     {
       exit(-1);
     }
-    // printf("!!!!!!!!!!\n");
-    // printf("%p\n",esp+1);
-    // printf("%p\n",(char *)(*(esp+1)));
     f->eax = exec((char *)(*(esp+1)));
     break;
 
@@ -252,23 +264,7 @@ void exit(int status)
 
 tid_t exec(const char *cmd_line)
 {
-  if (!is_user_vaddr(cmd_line)){
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, cmd_line) == NULL)
-  {
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, cmd_line+1) == NULL)
-  {
-    exit(-1);
-  }
-  // printf("!!!!!!!!\n");
-  // printf("%p\n",cmd_line);
-  // printf("%d\n",is_user_vaddr(cmd_line+1));
-  // printf("@@@@@@\n");
-  // printf("pagedir : %d\n",(pagedir_get_page(thread_current()->pagedir, cmd_line+1) == NULL));
-
+  is_valid_arg(cmd_line);
   tid_t result;
   lock_acquire(&sys_lock);
   result = process_execute(cmd_line);
@@ -290,13 +286,7 @@ bool create(const char *file, unsigned initial_size)
   {
     exit(-1);
   }
-  if (!is_user_vaddr(file)){
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, file) == NULL)
-  {
-    exit(-1);
-  }
+  is_valid_arg(file);
   lock_acquire(&sys_lock);
   result = filesys_create(file, initial_size);
   lock_release(&sys_lock);
@@ -305,17 +295,7 @@ bool create(const char *file, unsigned initial_size)
 
 bool remove(const char *file)
 {
-  if (!is_user_vaddr(file)){
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, file) == NULL)
-  {
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, file+1) == NULL)
-  {
-    exit(-1);
-  }
+  is_valid_arg(file);
   lock_acquire(&sys_lock);
   bool result = filesys_remove(file);
   lock_release(&sys_lock);
@@ -329,18 +309,7 @@ int open(const char *file)
     exit(-1);
   }
 
-  if (!is_user_vaddr(file)){
-    exit(-1);
-  }
-
-  if (pagedir_get_page(thread_current()->pagedir, file) == NULL)
-  {
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, file+1) == NULL)
-  {
-    exit(-1);
-  }
+  is_valid_arg(file);
   lock_acquire(&sys_lock);
   struct file *open_file = filesys_open(file);
 
@@ -392,17 +361,7 @@ int filesize(int fd)
 
 int read(int fd, void *buffer, unsigned size)
 {
-  if (!is_user_vaddr(buffer)){
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, buffer) == NULL)
-  {
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, buffer+1) == NULL)
-  {
-    exit(-1);
-  }
+  is_valid_arg(buffer);
   int result;
   lock_acquire(&sys_lock);
   if (fd == 0)
@@ -418,25 +377,13 @@ int read(int fd, void *buffer, unsigned size)
   }
 
   result = file_read(file->file, buffer, size);
-  // printf("%s\n",(char *)buffer);
   lock_release(&sys_lock);
   return result;
 }
 
 int write(int fd, const void *buffer, unsigned size)
 {
-  if (!is_user_vaddr(buffer)){
-    exit(-1);
-  }
-
-  if (pagedir_get_page(thread_current()->pagedir, buffer) == NULL)
-  {
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, buffer+1) == NULL)
-  {
-    exit(-1);
-  }
+  is_valid_arg(buffer);
 
   int result;
   lock_acquire(&sys_lock);
