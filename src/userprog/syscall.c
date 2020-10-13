@@ -6,7 +6,6 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "threads/pte.h"
-#include <string.h>
 
 struct lock sys_lock;
 
@@ -82,6 +81,7 @@ static struct file_descriptor *fd_to_fd(int fd)
 
 static bool is_userspace(int *esp, int n)
 {
+  
   int *temp;
   for (int i = 0; i < n + 1; i++)
   {
@@ -90,7 +90,6 @@ static bool is_userspace(int *esp, int n)
     {
       return false;
     }
-    // printf("%p\n",temp);
   }
   return true;
 }
@@ -109,12 +108,22 @@ syscall_handler(struct intr_frame *f)
   int *esp = (int *)(f->esp);
   // printf("%p\n",*esp);
   // hex_dump(esp,esp,100,1);
-  // printf("%d\n",*(char *)(((char *)(esp))+3));
+  // printf("content in esp : %d\n",*(char *)(((char *)(esp))));
+  // printf("address in esp : %p\n",(char *)(((char *)(esp))));
+  if(!is_userspace(esp,0)){
+    exit(-1);
+  }
   if (pagedir_get_page(thread_current()->pagedir, esp) == NULL)
   {
     exit(-1);
   }
-
+  if(!is_userspace(esp+1,0)){
+    exit(-1);
+  }
+  if (pagedir_get_page(thread_current()->pagedir, esp+1) == NULL)
+  {
+    exit(-1);
+  }
   switch (*esp)
   {
   case SYS_HALT:
@@ -139,6 +148,9 @@ syscall_handler(struct intr_frame *f)
     {
       exit(-1);
     }
+    // printf("!!!!!!!!!!\n");
+    // printf("%p\n",esp+1);
+    // printf("%p\n",(char *)(*(esp+1)));
     f->eax = exec((char *)(*(esp+1)));
     break;
 
@@ -247,6 +259,16 @@ tid_t exec(const char *cmd_line)
   {
     exit(-1);
   }
+  if (pagedir_get_page(thread_current()->pagedir, cmd_line+1) == NULL)
+  {
+    exit(-1);
+  }
+  // printf("!!!!!!!!\n");
+  // printf("%p\n",cmd_line);
+  // printf("%d\n",is_user_vaddr(cmd_line+1));
+  // printf("@@@@@@\n");
+  // printf("pagedir : %d\n",(pagedir_get_page(thread_current()->pagedir, cmd_line+1) == NULL));
+
   tid_t result;
   lock_acquire(&sys_lock);
   result = process_execute(cmd_line);
@@ -290,6 +312,10 @@ bool remove(const char *file)
   {
     exit(-1);
   }
+  if (pagedir_get_page(thread_current()->pagedir, file+1) == NULL)
+  {
+    exit(-1);
+  }
   lock_acquire(&sys_lock);
   bool result = filesys_remove(file);
   lock_release(&sys_lock);
@@ -306,7 +332,12 @@ int open(const char *file)
   if (!is_user_vaddr(file)){
     exit(-1);
   }
+
   if (pagedir_get_page(thread_current()->pagedir, file) == NULL)
+  {
+    exit(-1);
+  }
+  if (pagedir_get_page(thread_current()->pagedir, file+1) == NULL)
   {
     exit(-1);
   }
@@ -328,20 +359,21 @@ int open(const char *file)
   {
     new_fd = 3;
   }
+  
+  if(!strcmp(thread_current()->name,file))
+    file_deny_write(open_file);
+
   struct list_elem *e = (struct list_elem *)malloc(sizeof(struct list_elem));
   e->next = NULL;
   e->prev = NULL;
   struct file_descriptor *fd = (struct file_descriptor *)malloc(sizeof(struct file_descriptor));
-  memcpy(&(fd->fd),&new_fd,sizeof(int));
-  strlcpy(&(fd->name),file,strlen(file)+1);
-  memcpy(&(fd->file),&open_file,sizeof(struct file *));
+  fd->fd = new_fd;
+  fd->file = open_file;
   memcpy(&(fd->elem),e,sizeof(struct list_elem));
-  list_push_back(&thread_current()->fd_list, &fd->elem);
   
-  printf("%s , %s %s\n",fd->name,thread_current()->name,file);
-  if(strcmp(thread_current()->name,file)==0 )
-    file_deny_write(open_file);
+  list_push_back(&thread_current()->fd_list, &fd->elem);
   lock_release(&sys_lock);
+
   return new_fd;
 }
 
@@ -367,6 +399,10 @@ int read(int fd, void *buffer, unsigned size)
   {
     exit(-1);
   }
+  if (pagedir_get_page(thread_current()->pagedir, buffer+1) == NULL)
+  {
+    exit(-1);
+  }
   int result;
   lock_acquire(&sys_lock);
   if (fd == 0)
@@ -375,14 +411,14 @@ int read(int fd, void *buffer, unsigned size)
     lock_release(&sys_lock);
     return result;
   }
-  // print_list(&thread_current()->fd_list);
-
   struct file_descriptor *file = fd_to_fd(fd);
   if (file == NULL){
     lock_release(&sys_lock);
     return -1;
   }
+
   result = file_read(file->file, buffer, size);
+  // printf("%s\n",(char *)buffer);
   lock_release(&sys_lock);
   return result;
 }
@@ -391,11 +427,17 @@ int write(int fd, const void *buffer, unsigned size)
 {
   if (!is_user_vaddr(buffer)){
     exit(-1);
-    }
+  }
+
   if (pagedir_get_page(thread_current()->pagedir, buffer) == NULL)
   {
     exit(-1);
   }
+  if (pagedir_get_page(thread_current()->pagedir, buffer+1) == NULL)
+  {
+    exit(-1);
+  }
+
   int result;
   lock_acquire(&sys_lock);
   if (fd == 1)
@@ -412,9 +454,6 @@ int write(int fd, const void *buffer, unsigned size)
       lock_release(&sys_lock);
       return -1;
     }
-
-    if(!strcmp(file->name, thread_current()->name))
-      file_deny_write(file->file);
     result = file_write(file->file, buffer, size);
     lock_release(&sys_lock);
     return result;
@@ -424,7 +463,10 @@ int write(int fd, const void *buffer, unsigned size)
 void seek(int fd, unsigned position)
 {
   lock_acquire(&sys_lock);
-  file_seek(fd_to_fd(fd)->file, position);
+  struct file * f = fd_to_fd(fd)->file;
+  if(f == NULL)
+    return;
+  file_seek(f, position);
   lock_release(&sys_lock);
 }
 

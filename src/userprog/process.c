@@ -155,6 +155,7 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+  // printf("%s\n",argv[0]);
   success = load (argv[0], &if_.eip, &if_.esp);
   
   if(success){
@@ -349,6 +350,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }  
+  // printf("%d\n",memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7));
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
