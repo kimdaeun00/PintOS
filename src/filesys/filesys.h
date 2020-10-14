@@ -17,7 +17,6 @@ extern struct block *fs_device;
 struct file_descriptor
 {
   int fd;
-  char name[16];
   struct file* file;
   struct list_elem elem;
 };

@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -137,7 +138,6 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
-  // return process_wait(tid);
 }
 
 /* A thread function that loads a user process and starts it
@@ -155,7 +155,7 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  // printf("%s\n",argv[0]);
+
   success = load (argv[0], &if_.eip, &if_.esp);
   
   if(success){
@@ -203,8 +203,9 @@ process_wait (tid_t child_tid)
   if(!find_child){
     return -1;
   }
+  
+  list_remove(&target->child_elem);
   sema_down(&target->sync_sema);
-  // printf("process_wait exit status(child) = %d\n", target->exit_status);
   result = target->exit_status;
   sema_up(&target->sync);
   return result;
@@ -232,7 +233,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  list_remove(&cur->child_elem);
+  
   sema_up(&cur->sync_sema);
   sema_down(&cur->sync);
   // printf("process_exit exit status = %d\n", cur->exit_status);
@@ -344,6 +345,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
   /* Open executable file. */
+  lock_acquire(syscall_lock);
   file = filesys_open (file_name);
   if (file == NULL) 
     {
@@ -435,6 +437,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  lock_release (syscall_lock);
   return success;
 }
 

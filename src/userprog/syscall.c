@@ -8,50 +8,7 @@
 #include "threads/pte.h"
 
 struct lock sys_lock;
-
-static void print_list(struct list *list)
-{
-  printf("Print Start\n");
-  if (list_empty(list))
-  {
-    printf("list is empty\n");
-  }
-
-  struct list_elem *e;
-  struct list_elem temp;
-
-  for (e = list_begin(list); e->next != NULL; e = list_next(e))
-  {
-    printf("fd : %d\n", list_entry(e, struct file_descriptor, elem)->fd);
-    printf("is me? %d\n",list_tail(list) == list_head(list));
-    if (list_entry(e, struct file_descriptor, elem)->file != NULL)
-    {
-      printf("file is not NULL\n");
-    }
-    else
-      printf("file is null\n");
-
-    temp = list_entry(e, struct file_descriptor, elem)->elem;
-    if (temp.prev == NULL)
-    {
-      printf("prev is null\n");
-    }
-    else
-    {
-      printf("prev isn't null\n");
-    }
-
-    if (temp.next == NULL)
-    {
-      printf("next is null\n");
-    }
-    else
-    {
-      printf("next isn't null\n");
-    }
-  }
-  printf("Print End\n");
-}
+struct lock *syscall_lock = &sys_lock;
 
 static struct file_descriptor *fd_to_fd(int fd)
 {
@@ -80,7 +37,7 @@ static struct file_descriptor *fd_to_fd(int fd)
 }
 
 static void is_valid_arg(void* p){
-    if (!is_user_vaddr(p)){
+  if (!is_user_vaddr(p)){
     exit(-1);
   }
 
@@ -227,7 +184,7 @@ syscall_handler(struct intr_frame *f)
     {
       exit(-1);
     }
-    seek(*(int *)(esp + 1), *(unsigned int *)(esp + 1));
+    seek(*(int *)(esp + 1), *(unsigned int *)(esp + 2));
     break;
 
   case SYS_TELL:
@@ -328,7 +285,6 @@ int open(const char *file)
   {
     new_fd = 3;
   }
-  
   if(!strcmp(thread_current()->name,file))
     file_deny_write(open_file);
 
@@ -378,15 +334,17 @@ int read(int fd, void *buffer, unsigned size)
 
   result = file_read(file->file, buffer, size);
   lock_release(&sys_lock);
+  // printf("read : %s\n",buffer);
   return result;
 }
 
 int write(int fd, const void *buffer, unsigned size)
 {
   is_valid_arg(buffer);
-
   int result;
+  // printf("write : %s\n",buffer);
   lock_acquire(&sys_lock);
+
   if (fd == 1)
   {
     putbuf(buffer, size); //실제로는??
