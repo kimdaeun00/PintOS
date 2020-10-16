@@ -5,10 +5,10 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "threads/palloc.h"
 #include "threads/pte.h"
 
 struct lock sys_lock;
-struct lock *syscall_lock = &sys_lock;
 
 static struct file_descriptor *fd_to_fd(int fd)
 {
@@ -40,7 +40,6 @@ static void is_valid_arg(void* p){
   if (!is_user_vaddr(p)){
     exit(-1);
   }
-
   if (pagedir_get_page(thread_current()->pagedir, p) == NULL)
   {
     exit(-1);
@@ -78,8 +77,8 @@ static void
 syscall_handler(struct intr_frame *f)
 {
   int *esp = (int *)(f->esp);
-  // printf("%p\n",*esp);
-  // hex_dump(esp,esp,100,1);
+  // if(*esp != 6)
+  //   printf("syscall num : %d\n",*esp);
   // printf("content in esp : %d\n",*(char *)(((char *)(esp))));
   // printf("address in esp : %p\n",(char *)(((char *)(esp))));
   if(!is_userspace(esp,0)){
@@ -265,7 +264,6 @@ int open(const char *file)
   {
     exit(-1);
   }
-
   is_valid_arg(file);
   lock_acquire(&sys_lock);
   struct file *open_file = filesys_open(file);
@@ -295,6 +293,7 @@ int open(const char *file)
   fd->fd = new_fd;
   fd->file = open_file;
   memcpy(&(fd->elem),e,sizeof(struct list_elem));
+  free(e);
   
   list_push_back(&thread_current()->fd_list, &fd->elem);
   lock_release(&sys_lock);
@@ -392,6 +391,7 @@ void close(int fd)
   {
     list_remove(&(temp->elem));
     file_close(temp->file);
+    free(temp);
     lock_release(&sys_lock);
   }
   else

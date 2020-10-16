@@ -95,7 +95,6 @@ struct thread
    int real_priority;                  /*original priority before/after donation*/
    struct lock *waiting_lock;
    struct list lock_list;
-   struct list fd_list;
 
 
     /* Shared between thread.c and synch.c. */
@@ -106,10 +105,13 @@ struct thread
     /* Owned by userprog/process.c. */
    int exit_status;
    uint32_t *pagedir;                  /* Page directory. */
-   struct semaphore sync_sema;
+   struct list fd_list;
    struct list child_list;
    struct list_elem child_elem;
-   struct semaphore sync;
+   struct semaphore sync_exit;
+   struct semaphore sync_free;
+   struct semaphore loading;
+   bool parent_waiting;
 #endif
 
     /* Owned by thread.c. */

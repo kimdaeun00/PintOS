@@ -37,7 +37,11 @@ spawn_child (int c, enum child_termination_mode mode)
   char child_cmd[128];
   snprintf (child_cmd, sizeof child_cmd,
             "%s %d %s", test_name, c, mode == CRASH ? "-k" : "");
-  return exec (child_cmd);
+
+  int a = exec(child_cmd);
+  // printf("tid : %d\n",a);
+  return a;
+  // return exec (child_cmd);
 }
 
 /* Open a number of files (and fail to close them).
@@ -47,15 +51,19 @@ static void
 consume_some_resources (void)
 {
   int fd, fdmax = 126;
-
   /* Open as many files as we can, up to fdmax.
      Depending on how file descriptors are allocated inside
      the kernel, open() may fail if the kernel is low on memory.
      A low-memory condition in open() should not lead to the
      termination of the process.  */
   for (fd = 0; fd < fdmax; fd++)
+  {
+    // printf("%d\n",fd);
     if (open (test_name) == -1)
       break;
+  }
+    // if (open (test_name) == -1)
+    //   break;
 }
 
 /* Consume some resources, then terminate this process
@@ -66,9 +74,11 @@ consume_some_resources_and_die (int seed)
   consume_some_resources ();
   random_init (seed);
   volatile int *PHYS_BASE = (volatile int *)0xC0000000;
-
-  switch (random_ulong () % 5)
+  unsigned long a = random_ulong () % 5;
+  // printf("abnormal : %d\n",a);
+  switch (a)
     {
+
       case 0:
         *(volatile int *) NULL = 42;
 
@@ -118,10 +128,8 @@ main (int argc, char *argv[])
       consume_some_resources_and_die (n);
       NOT_REACHED ();
     }
-
   int howmany = is_at_root ? EXPECTED_REPETITIONS : 1;
   int i, expected_depth = -1;
-
   for (i = 0; i < howmany; i++)
     {
       pid_t child_pid;
@@ -143,10 +151,12 @@ main (int argc, char *argv[])
 
       /* Now spawn the child that will recurse. */
       child_pid = spawn_child (n + 1, RECURSE);
+      // printf("reached : %d\n",child_pid);
 
       /* If maximum depth is reached, return result. */
-      if (child_pid == -1)
+      if (child_pid == -1){
         return n;
+      }
 
       /* Else wait for child to report how deeply it was able to recurse. */
       int reached_depth = wait (child_pid);
@@ -163,7 +173,6 @@ main (int argc, char *argv[])
               i, howmany, expected_depth, reached_depth);
       ASSERT (expected_depth == reached_depth);
     }
-
   consume_some_resources ();
 
   if (n == 0)
@@ -173,7 +182,6 @@ main (int argc, char *argv[])
       msg ("success. program forked %d times.", howmany);
       msg ("end");
     }
-
   return expected_depth;
 }
 // vim: sw=2

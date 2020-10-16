@@ -399,7 +399,6 @@ thread_exit (void)
   printf("%s: exit(%d)\n",thread_current()->name,thread_current()->exit_status);
   process_exit ();
 #endif
-
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
@@ -595,8 +594,10 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->lock_list);
   list_init(&t->fd_list);
   list_init(&t->child_list);
-  sema_init(&t->sync_sema,0);
-  sema_init(&t->sync,0);
+  sema_init(&t->sync_exit,0);
+  sema_init(&t->sync_free,0);
+  sema_init(&t->loading,0);
+  t->parent_waiting = false;
 
   list_push_back(&running_thread()->child_list,&t->child_elem);
 
