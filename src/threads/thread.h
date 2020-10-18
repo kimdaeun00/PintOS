@@ -111,7 +111,6 @@ struct thread
    struct semaphore sync_exit;
    struct semaphore sync_free;
    struct semaphore loading;
-   bool parent_waiting;
 #endif
 
     /* Owned by thread.c. */

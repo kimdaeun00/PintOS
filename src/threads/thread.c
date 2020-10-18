@@ -597,7 +597,6 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init(&t->sync_exit,0);
   sema_init(&t->sync_free,0);
   sema_init(&t->loading,0);
-  t->parent_waiting = false;
 
   list_push_back(&running_thread()->child_list,&t->child_elem);
 

@@ -242,8 +242,8 @@ process_wait (tid_t child_tid)
     return -1;
   }
   
-  list_remove(&target->child_elem);
   sema_down(&target->sync_exit);
+  list_remove(&target->child_elem);
   result = target->exit_status;
   sema_up(&target->sync_free);
   return result;
@@ -286,7 +286,8 @@ process_exit (void)
   // struct thread *t;
   // for(e=list_begin(&cur->child_list); e->next != NULL;){
   //   t = list_entry(e,struct thread, child_elem);
-  //   wait(t->tid);
+  //   if(t->sync_free.value == 0)
+  //     sema_up(&t->sync_free);
   // }
 
 }
@@ -396,7 +397,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
   /* Open executable file. */
-  // lock_acquire(syscall_lock);
   file = filesys_open (file_name);
   if (file == NULL) 
     {
@@ -488,7 +488,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
-  // lock_release (syscall_lock);
   return success;
 }
 
