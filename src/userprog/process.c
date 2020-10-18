@@ -243,6 +243,7 @@ process_wait (tid_t child_tid)
   }
   
   sema_down(&target->sync_exit);
+  target->is_waiting = true;
   list_remove(&target->child_elem);
   result = target->exit_status;
   sema_up(&target->sync_free);
@@ -282,13 +283,9 @@ process_exit (void)
     e = list_remove(&temp->elem);
     free(temp);
   }
+  if(!cur->is_waiting) //parent가 기다리지 않는 경우
+    list_remove(&cur->child_elem);
   
-  // struct thread *t;
-  // for(e=list_begin(&cur->child_list); e->next != NULL;){
-  //   t = list_entry(e,struct thread, child_elem);
-  //   if(t->sync_free.value == 0)
-  //     sema_up(&t->sync_free);
-  // }
 
 }
 
