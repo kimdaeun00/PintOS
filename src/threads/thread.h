@@ -1,9 +1,11 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 #define USERPROG
+#define VM
 
 #include <debug.h>
 #include <list.h>
+#include <hash.h>
 #include <stdint.h>
 #include "threads/synch.h"
 
@@ -112,6 +114,10 @@ struct thread
    struct semaphore sync_free;
    struct semaphore loading;
    bool is_waiting;
+#endif
+
+#ifdef VM
+   struct spt * spt;
 #endif
 
     /* Owned by thread.c. */
