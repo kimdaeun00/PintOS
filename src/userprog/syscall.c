@@ -31,21 +31,12 @@ static struct file_descriptor *fd_to_fd(int fd)
     {
       return target;
     }
-    // printf("tf : %d\n",e == list_tail(fd_list) );
   }
   return NULL;
 }
 
 static void is_valid_arg(void* p){
   if (!is_user_vaddr(p)){
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, p) == NULL)
-  {
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, ((const char*)p)+1) == NULL)
-  {
     exit(-1);
   }
 }
@@ -57,7 +48,7 @@ static bool is_userspace(int *esp, int n)
   for (int i = 0; i < n + 1; i++)
   {
     temp = esp + i + 1;
-    if (!is_user_vaddr((void *)(temp)) || !is_user_vaddr((void *)(((char *)(temp)) + 3)) || pagedir_get_page(thread_current()->pagedir, (void *)temp) == NULL)
+    if (!is_user_vaddr((void *)(temp)) || !is_user_vaddr((void *)(((char *)(temp)) + 3)) ) 
     {
       return false;
     }
@@ -84,15 +75,7 @@ syscall_handler(struct intr_frame *f)
   if(!is_userspace(esp,0)){
     exit(-1);
   }
-  if (pagedir_get_page(thread_current()->pagedir, esp) == NULL)
-  {
-    exit(-1);
-  }
   if(!is_userspace(esp+1,0)){
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, esp+1) == NULL)
-  {
     exit(-1);
   }
   switch (*esp)

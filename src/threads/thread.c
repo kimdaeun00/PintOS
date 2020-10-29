@@ -11,9 +11,12 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
+#include "vm/frame.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -369,7 +372,6 @@ struct thread *
 thread_current (void) 
 {
   struct thread *t = running_thread ();
-  
   /* Make sure T is really a thread.
      If either of these assertions fire, then your thread may
      have overflowed its stack.  Each thread has less than 4 kB
@@ -394,7 +396,7 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
-  
+
 #ifdef USERPROG
   printf("%s: exit(%d)\n",thread_current()->name,thread_current()->exit_status);
   process_exit ();
@@ -579,7 +581,6 @@ static void
 init_thread (struct thread *t, const char *name, int priority)
 {
   enum intr_level old_level;
-  
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
@@ -592,17 +593,21 @@ init_thread (struct thread *t, const char *name, int priority)
   t->real_priority = priority;
   t->magic = THREAD_MAGIC;
   list_init(&t->lock_list);
+  #ifdef USERPROG
   list_init(&t->fd_list);
   list_init(&t->child_list);
   sema_init(&t->sync_exit,0);
   sema_init(&t->sync_free,0);
   sema_init(&t->loading,0);
   t->is_waiting = false;
-  spt_init(&t->spt);
-
   list_push_back(&running_thread()->child_list,&t->child_elem);
-
   t->exit_status = -1;
+  #endif
+
+  #ifdef VM
+  t->spt = NULL;
+  #endif
+
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

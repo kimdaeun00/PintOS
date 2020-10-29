@@ -8,6 +8,7 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/thread.h"
 
 /* A simple implementation of malloc().
 
@@ -102,6 +103,7 @@ malloc (size_t size)
   for (d = descs; d < descs + desc_cnt; d++)
     if (d->block_size >= size)
       break;
+  
   if (d == descs + desc_cnt) 
     {
       /* SIZE is too big for any descriptor.
@@ -110,7 +112,6 @@ malloc (size_t size)
       a = palloc_get_multiple (0, page_cnt);
       if (a == NULL)
         return NULL;
-
       /* Initialize the arena to indicate a big block of PAGE_CNT
          pages, and return it. */
       a->magic = ARENA_MAGIC;
@@ -118,9 +119,7 @@ malloc (size_t size)
       a->free_cnt = page_cnt;
       return a + 1;
     }
-
   lock_acquire (&d->lock);
-
   /* If the free list is empty, create a new arena. */
   if (list_empty (&d->free_list))
     {
@@ -223,7 +222,6 @@ free (void *p)
       struct block *b = p;
       struct arena *a = block_to_arena (b);
       struct desc *d = a->desc;
-      
       if (d != NULL) 
         {
           /* It's a normal block.  We handle it here. */
@@ -231,10 +229,7 @@ free (void *p)
 #ifndef NDEBUG
           /* Clear the block to help detect use-after-free bugs. */
           memset (b, 0xcc, d->block_size);
-#endif
-  
-          lock_acquire (&d->lock);
-
+#endif   
           /* Add block to free list. */
           list_push_front (&d->free_list, &b->free_elem);
 
@@ -251,7 +246,6 @@ free (void *p)
                 }
               palloc_free_page (a);
             }
-
           lock_release (&d->lock);
         }
       else
