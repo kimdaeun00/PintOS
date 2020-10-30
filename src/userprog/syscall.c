@@ -9,6 +9,7 @@
 #include "threads/pte.h"
 
 struct lock sys_lock;
+struct lock *syscall_lock = &sys_lock;
 
 static struct file_descriptor *fd_to_fd(int fd)
 {
@@ -40,14 +41,6 @@ static void is_valid_arg(void* p){
   if (!is_user_vaddr(p)){
     exit(-1);
   }
-  if (pagedir_get_page(thread_current()->pagedir, p) == NULL)
-  {
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, ((const char*)p)+1) == NULL)
-  {
-    exit(-1);
-  }
 }
 
 static bool is_userspace(int *esp, int n)
@@ -57,7 +50,7 @@ static bool is_userspace(int *esp, int n)
   for (int i = 0; i < n + 1; i++)
   {
     temp = esp + i + 1;
-    if (!is_user_vaddr((void *)(temp)) || !is_user_vaddr((void *)(((char *)(temp)) + 3)) || pagedir_get_page(thread_current()->pagedir, (void *)temp) == NULL)
+    if (!is_user_vaddr((void *)(temp)) || !is_user_vaddr((void *)(((char *)(temp)) + 3)))
     {
       return false;
     }
@@ -69,14 +62,15 @@ static void syscall_handler(struct intr_frame *);
 
 void syscall_init(void)
 {
-  intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
   lock_init(&sys_lock);
+  intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
 static void
 syscall_handler(struct intr_frame *f)
 {
   int *esp = (int *)(f->esp);
+  thread_current()->esp = esp;
   // if(*esp != 6)
   //   printf("syscall num : %d\n",*esp);
   // printf("content in esp : %d\n",*(char *)(((char *)(esp))));
@@ -84,17 +78,7 @@ syscall_handler(struct intr_frame *f)
   if(!is_userspace(esp,0)){
     exit(-1);
   }
-  if (pagedir_get_page(thread_current()->pagedir, esp) == NULL)
-  {
-    exit(-1);
-  }
-  if(!is_userspace(esp+1,0)){
-    exit(-1);
-  }
-  if (pagedir_get_page(thread_current()->pagedir, esp+1) == NULL)
-  {
-    exit(-1);
-  }
+
   switch (*esp)
   {
   case SYS_HALT:

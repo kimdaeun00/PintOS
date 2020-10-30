@@ -598,7 +598,7 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init(&t->sync_free,0);
   sema_init(&t->loading,0);
   t->is_waiting = false;
-
+  t->esp = PHYS_BASE;
   list_push_back(&running_thread()->child_list,&t->child_elem);
 
   t->exit_status = -1;

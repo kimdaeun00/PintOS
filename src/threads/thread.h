@@ -1,11 +1,13 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
-#define USERPROG
 
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
+#ifdef VM
+#include "vm/page.h"
+#endif
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -99,7 +101,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+   void* esp;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -112,6 +114,11 @@ struct thread
    struct semaphore sync_free;
    struct semaphore loading;
    bool is_waiting;
+#endif
+
+#ifdef VM
+   struct hash spt;
+   
 #endif
 
     /* Owned by thread.c. */
