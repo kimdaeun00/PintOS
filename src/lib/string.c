@@ -295,7 +295,6 @@ strlen (const char *string)
   const char *p;
 
   ASSERT (string != NULL);
-
   for (p = string; *p != '\0'; p++)
     continue;
   return p - string;

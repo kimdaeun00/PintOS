@@ -39,6 +39,7 @@
 #endif
 #ifdef VM
 #include "vm/frame.h"
+#include "vm/swap.h"
 #endif
 
 /* Page directory with kernel mappings only. */
@@ -102,6 +103,7 @@ main (void)
   malloc_init ();
   paging_init ();
   ft_init();
+  evict_init();
 
   /* Segmentation. */
 #ifdef USERPROG

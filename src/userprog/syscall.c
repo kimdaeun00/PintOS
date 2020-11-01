@@ -316,8 +316,10 @@ int read(int fd, void *buffer, unsigned size)
   }
 
   result = file_read(file->file, buffer, size);
-  lock_release(&sys_lock);
-  // printf("read : %s\n",buffer);
+  // lock_release(&sys_lock);
+  // printf("read : %p\n",buffer);
+  // printf("read : %d\n",result);
+  // printf("%d\n",strlen(buffer));
   return result;
 }
 
@@ -325,9 +327,7 @@ int write(int fd, const void *buffer, unsigned size)
 {
   is_valid_arg(buffer);
   int result;
-  // printf("write : %s\n",buffer);
   lock_acquire(&sys_lock);
-
   if (fd == 1)
   {
     putbuf(buffer, size); //실제로는??

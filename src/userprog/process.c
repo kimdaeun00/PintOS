@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
 #include "vm/page.h"
+#include "vm/frame.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -176,6 +177,7 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
+  // printf("start : %s\n",file_name);
   struct intr_frame if_;
   bool success;
   int argc = get_argc((char*)file_name);
@@ -425,7 +427,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
       if (file_ofs < 0 || file_ofs > file_length (file))
         goto done;
       file_seek (file, file_ofs);
-
       if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
         goto done;
       file_ofs += sizeof phdr;
@@ -560,6 +561,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
   file_seek (file, ofs);
+  // printf("load_seg file : %p\n",file);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
       /* Calculate how to fill this page.
@@ -598,7 +600,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       upage += PGSIZE;
 
 #ifdef VM
-      ofs += page_read_bytes;
+      ofs += PGSIZE;
 #endif
 
     }
@@ -613,7 +615,16 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+#ifdef VM
+  struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,false);
+  
+  // printf("in setup_stack\n");
+  kpage = frame_alloc(spte,PAL_USER | PAL_ZERO);
+  *esp = PHYS_BASE;
+  return true;
+  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+
+#else
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -623,6 +634,7 @@ setup_stack (void **esp)
         palloc_free_page (kpage);
     }
   return success;
+#endif
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel

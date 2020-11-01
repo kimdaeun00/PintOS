@@ -7,6 +7,9 @@
 #include "tests/arc4.h"
 #include "tests/lib.h"
 #include "tests/main.h"
+#include "lib/string.h"
+#include "threads/malloc.h"
+
 
 /* This is the max file size for an older version of the Pintos
    file system that had 126 direct blocks each pointing to a
@@ -45,15 +48,12 @@ sort_chunks (void)
     {
       pid_t child;
       int handle;
-
       msg ("sort chunk %zu", i);
-
       /* Write this chunk to a file. */
       quiet = true;
       CHECK ((handle = open ("buffer")) > 1, "open \"buffer\"");
       write (handle, buf1 + CHUNK_SIZE * i, CHUNK_SIZE);
       close (handle);
-
       /* Sort with subprocess. */
       CHECK ((child = exec ("child-sort buffer")) != -1,
              "exec \"child-sort buffer\"");
@@ -63,9 +63,10 @@ sort_chunks (void)
       CHECK ((handle = open ("buffer")) > 1, "open \"buffer\"");
       read (handle, buf1 + CHUNK_SIZE * i, CHUNK_SIZE);
       close (handle);
-
+      // printf("%d\n",*(buf1 + 15*CHUNK_SIZE));
       quiet = false;
     }
+    
 }
 
 /* Merge the sorted chunks in buf1 into a fully sorted buf2. */
@@ -76,7 +77,6 @@ merge (void)
   size_t mp_left;
   unsigned char *op;
   size_t i;
-
   msg ("merge");
 
   /* Initialize merge pointers. */
@@ -93,7 +93,6 @@ merge (void)
       for (i = 1; i < mp_left; i++)
         if (*mp[i] < *mp[min])
           min = i;
-
       /* Append value to buf2. */
       *op++ = *mp[min];
 

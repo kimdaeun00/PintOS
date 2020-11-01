@@ -151,20 +151,21 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
-
 #ifdef VM
    if (not_present && is_user_vaddr(fault_addr)){ /* fault address > USER BASE 인 경우로 가정 */
          struct spte* spte = spt_get_spte(fault_addr);
+         // printf("%p : %p\n",spte,fault_addr);
          if(spte){
+            // printf("in page fault\n");
             if(frame_alloc(spte, PAL_USER)!=NULL) 
                return;
-            
          } 
-         else if(fault_addr == f->esp-4 || fault_addr == f->esp-32 ){
-            printf("stack growth required\n");
-             //한페이지 용량정도 더했을때 esp이거나 valid한 주소일 경우 stack_growth가 필요한 상황이
-         }
+         // else if{
+         //    printf("stack growth required\n");
+         //     //한페이지 용량정도 더했을때 esp이거나 valid한 주소일 경우 stack_growth가 필요한 상황이
+         // }
       }
+   
 #endif
    if(is_kernel_vaddr(fault_addr)||!user||not_present){
       exit(-1);

@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <stdint.h>
 #include "lib/kernel/hash.h"
+#include "devices/block.h"
 
 enum vm_status
  {
@@ -23,6 +24,8 @@ struct spte{
     uint32_t zero_bytes;
     bool writable;
     int status;
+    block_sector_t swap_index;
+    bool dirty_bit;
 };
 
 
