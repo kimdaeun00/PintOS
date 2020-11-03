@@ -316,10 +316,7 @@ int read(int fd, void *buffer, unsigned size)
   }
 
   result = file_read(file->file, buffer, size);
-  // lock_release(&sys_lock);
-  // printf("read : %p\n",buffer);
-  // printf("read : %d\n",result);
-  // printf("%d\n",strlen(buffer));
+  lock_release(&sys_lock);
   return result;
 }
 

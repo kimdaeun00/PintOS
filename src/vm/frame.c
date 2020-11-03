@@ -48,24 +48,21 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
         kpage = victim;
         spte->swap_index = swap_out(victim);
     }
-    
     struct fte* fte = (struct fte*)malloc(sizeof(struct fte));
     if(!fte){
         lock_release(&ft_lock);
         return NULL;
     }
-
     fte->t = thread_current();
     fte->kpage = kpage;
     fte->spte = spte;
-    list_push_back(&evict_list,&fte->evict_elem);
     hash_insert(&ft,&fte->elem);
-    if(spte->file == NULL){
+    list_push_back(&evict_list,&fte->evict_elem);
+    if(spte->file == NULL){ 
         lock_release(&ft_lock);
         pagedir_set_page(fte->t->pagedir,spte->upage,kpage,true);
         return fte;
     }
-
     if(spte->status == VM_EXEC_FILE){
         return frame_alloc_exec(spte,flags,fte);
     }
@@ -79,7 +76,7 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
     file_seek(spte->file,spte->ofs);
     /* Load this page. */
     if (spte->read_bytes > 0 && file_read_at(spte->file, kpage, spte->read_bytes, spte->ofs) != (int) spte->read_bytes)
-        {   
+        {
             lock_release(&ft_lock);
             palloc_free_page (kpage);
             free(fte);
@@ -111,20 +108,38 @@ struct fte* frame_alloc_swap(struct spte* spte, enum palloc_flags flags,struct f
 
 void * find_evict(){
     struct list_elem *e;
-    for(e=list_front(&evict_list);;e=list_next(e)){
-        if(e==list_tail(&evict_list))
-            e = list_head(&evict_list);
+    if(list_empty(&evict_list))
+        return NULL;
+    
+    e = list_front(&evict_list);
+    // e = list_next(list_front(&evict_list));
+    struct fte* temp  = list_entry(e,struct fte,evict_elem);
+    list_remove(e);
+    hash_delete(&ft,&temp->elem);
+    temp->spte->status = VM_SWAP_DISK;
+    return temp->kpage;
 
-        struct fte* temp  = list_entry(e,struct fte,evict_elem);
-        if(pagedir_is_accessed(temp->t->pagedir,temp->spte->upage))
-            pagedir_set_accessed(temp->t->pagedir,temp->spte->upage,false);
-        else{
-            list_remove(e);
-            hash_delete(&ft,&temp->elem);
-            temp->spte->status = VM_SWAP_DISK;
-            void * empty_kpage = temp ->kpage;
-            free(temp);
-            return empty_kpage;
-        }
-    }
+
+    // for(e=list_front(&evict_list);;e=list_next(e)){
+    //     if(e==list_tail(&evict_list)){
+    //         printf("come back to head \n");
+    //         e = list_head(&evict_list);
+    //         }
+
+    //     struct fte* temp  = list_entry(e,struct fte,evict_elem);
+    //     printf("%p\n",temp->spte->upage);
+    //     if(pagedir_is_accessed(temp->t->pagedir,temp->spte->upage)){
+    //         pagedir_set_accessed(temp->t->pagedir,temp->spte->upage,false);
+    //     }
+    //     else{
+    //         printf("end of iteration : %p\n",temp->spte->upage);
+    //         list_remove(e);
+    //         hash_delete(&ft,&temp->elem);
+    //         temp->spte->status = VM_SWAP_DISK;
+    //         void * empty_kpage = temp ->kpage;
+    //         free(temp);
+    //         return empty_kpage;
+    //     }
+    // }
 }
+

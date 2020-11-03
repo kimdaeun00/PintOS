@@ -130,7 +130,7 @@ page_fault (struct intr_frame *f)
   bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
   void *fault_addr;  /* Fault address. */
-
+  
   /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
      data.  It is not necessarily the address of the instruction
@@ -152,22 +152,27 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 #ifdef VM
+   printf("addr : %p\n",fault_addr);
    if (not_present && is_user_vaddr(fault_addr)){ /* fault address > USER BASE 인 경우로 가정 */
          struct spte* spte = spt_get_spte(fault_addr);
-         // printf("%p : %p\n",spte,fault_addr);
          if(spte){
-            // printf("in page fault\n");
+            // printf("lol1 :%p\n",spte->upage);
             if(frame_alloc(spte, PAL_USER)!=NULL) 
+               // printf("lol1 over\n");
                return;
          } 
+         else{
+            // printf("lol2 %p \n",fault_addr);
+         }
          // else if{
          //    printf("stack growth required\n");
          //     //한페이지 용량정도 더했을때 esp이거나 valid한 주소일 경우 stack_growth가 필요한 상황이
          // }
       }
-   
 #endif
+   printf("lol3 :%p\n",fault_addr);
    if(is_kernel_vaddr(fault_addr)||!user||not_present){
+      // printf("fault exit : %p %d %d %d %d\n", fault_addr,is_kernel_vaddr(fault_addr), !user, f->error_code, not_present);
       exit(-1);
    }
 

@@ -10,7 +10,7 @@ enum vm_status
  {
     VM_ALL_ZERO,
     VM_SWAP_DISK,
-    VM_EXEC_FILE,
+    VM_EXEC_FILE
     // VM_READABLE_FILE
  };
 

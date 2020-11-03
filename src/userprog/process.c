@@ -177,7 +177,6 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
-  // printf("start : %s\n",file_name);
   struct intr_frame if_;
   bool success;
   int argc = get_argc((char*)file_name);
@@ -570,6 +569,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 #ifdef VM
+      // printf("spte_init %p\n",upage);
       if(spte_init(upage,file,ofs,page_read_bytes,page_zero_bytes,writable) == NULL){
         return false;
       }
@@ -615,16 +615,15 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
-#ifdef VM
-  struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,false);
-  
-  // printf("in setup_stack\n");
-  kpage = frame_alloc(spte,PAL_USER | PAL_ZERO);
-  *esp = PHYS_BASE;
-  return true;
-  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+// #ifdef VM
+  // struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,false);
+  // // printf("in setup_stack\n");
+  // kpage = frame_alloc(spte,PAL_USER | PAL_ZERO);
+  // *esp = PHYS_BASE;
+  // return true;
+  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
 
-#else
+// #else
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -634,7 +633,7 @@ setup_stack (void **esp)
         palloc_free_page (kpage);
     }
   return success;
-#endif
+// #endif
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel

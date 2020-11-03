@@ -58,12 +58,10 @@ sort_chunks (void)
       CHECK ((child = exec ("child-sort buffer")) != -1,
              "exec \"child-sort buffer\"");
       CHECK (wait (child) == 123, "wait for child-sort");
-
       /* Read chunk back from file. */
       CHECK ((handle = open ("buffer")) > 1, "open \"buffer\"");
       read (handle, buf1 + CHUNK_SIZE * i, CHUNK_SIZE);
       close (handle);
-      // printf("%d\n",*(buf1 + 15*CHUNK_SIZE));
       quiet = false;
     }
     
@@ -78,28 +76,31 @@ merge (void)
   unsigned char *op;
   size_t i;
   msg ("merge");
-
   /* Initialize merge pointers. */
   mp_left = CHUNK_CNT;
-  for (i = 0; i < CHUNK_CNT; i++)
+  for (i = 0; i < CHUNK_CNT; i++){
     mp[i] = buf1 + CHUNK_SIZE * i;
-
+    printf("%p\n",buf1 + CHUNK_SIZE * i);
+  }
   /* Merge. */
   op = buf2;
   while (mp_left > 0) 
     {
       /* Find smallest value. */
       size_t min = 0;
-      for (i = 1; i < mp_left; i++)
+      for (i = 1; i < mp_left; i++){
+        // printf("%p %p\n",mp[i],mp[min]);
         if (*mp[i] < *mp[min])
           min = i;
+      }
+      // printf("mp min %p %d\n",mp[min],*mp[min]);
       /* Append value to buf2. */
       *op++ = *mp[min];
-
       /* Advance merge pointer.
          Delete this chunk from the set if it's emptied. */ 
-      if ((++mp[min] - buf1) % CHUNK_SIZE == 0)
-        mp[min] = mp[--mp_left]; 
+      if ((++mp[min] - buf1) % CHUNK_SIZE == 0){
+        mp[min] = mp[--mp_left];    
+      }
     }
 }
 
