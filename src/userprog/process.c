@@ -261,6 +261,7 @@ process_exit (void)
   sema_up(&cur->sync_exit);
   sema_down(&cur->sync_free);
   pd = cur->pagedir;
+  spt_exit(cur->tid);
   if (pd != NULL) 
     {
       /* Correct ordering here is crucial.  We must set
@@ -274,7 +275,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     } 
-
   struct list_elem *e;
   struct file_descriptor *temp;
   for(e=list_begin(&cur->fd_list) ;e->next !=NULL ;){
@@ -283,6 +283,7 @@ process_exit (void)
     e = list_remove(&temp->elem);
     free(temp);
   }
+  // hash_destroy(&cur->spt,spt_hash_func);
   if(!cur->is_waiting) //parent가 기다리지 않는 경우
     list_remove(&cur->child_elem);
   
@@ -616,11 +617,11 @@ setup_stack (void **esp)
   bool success = false;
 
 // #ifdef VM
-  // struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,false);
-  // // printf("in setup_stack\n");
-  // kpage = frame_alloc(spte,PAL_USER | PAL_ZERO);
-  // *esp = PHYS_BASE;
-  // return true;
+//   struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,false);
+//   // printf("in setup_stack\n");
+//   kpage = frame_alloc(spte,PAL_USER | PAL_ZERO);
+//   *esp = PHYS_BASE;
+//   return true;
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
 
 // #else

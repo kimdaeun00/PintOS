@@ -26,13 +26,13 @@ struct spte* spte_init(void * upage, struct file *file, uint32_t ofs, uint32_t r
     spte->upage = upage;
     spte->status = VM_EXEC_FILE;
     spte->file = file;
+    spte->ofs = ofs;
+    spte->read_bytes = read_bytes;
+    spte->zero_bytes = zero_bytes;
+    spte->writable = writable;
+    spte->swap_index = NULL;
+    spte->dirty_bit = false;
     hash_insert(&thread_current()->spt,&spte->elem);
-      spte->ofs = ofs;
-      spte->read_bytes = read_bytes;
-      spte->zero_bytes = zero_bytes;
-      spte->writable = writable;
-      spte->swap_index = NULL;
-      spte->dirty_bit = false;
     return spte;
 
 }
@@ -45,4 +45,3 @@ struct spte* spt_get_spte(void *addr){
     free(temp);
     return result;
  } 
-

@@ -31,7 +31,6 @@ pagedir_destroy (uint32_t *pd)
 
   if (pd == NULL)
     return;
-
   ASSERT (pd != init_page_dir);
   for (pde = pd; pde < pd + pd_no (PHYS_BASE); pde++)
     if (*pde & PTE_P) 
@@ -79,7 +78,6 @@ lookup_page (uint32_t *pd, const void *vaddr, bool create)
       else
         return NULL;
     }
-
   /* Return the page table entry. */
   pt = pde_get_pt (*pde);
   return &pt[pt_no (vaddr)];

@@ -9,24 +9,10 @@
 #include "vm/swap.h"
 #include "string.h"
 
-struct hash ft;
+struct list ft;
 struct lock ft_lock;
 struct list evict_list;
 
-unsigned ft_hash_func(const struct hash_elem *temp, void *aux){
-     return hash_int((int)hash_entry(temp, struct fte, elem) -> kpage);
-}
- 
-bool ft_less(const struct hash_elem *a, const struct hash_elem *b, void *aux){
-  int64_t upage_a = hash_entry(a, struct fte, elem) -> kpage;
-  int64_t upage_b = hash_entry(b, struct fte, elem) -> kpage;
-  if(upage_a > upage_b){
-    return true;
-  }
-  else{
-    return false;
-  }
-}
 
 void evict_init(void){
     list_init(&evict_list);
@@ -35,7 +21,7 @@ void evict_init(void){
 void ft_init(void){
     lock_init(&ft_lock);
     lock_acquire(&ft_lock);
-    hash_init(&ft,ft_hash_func,ft_less,NULL);
+    list_init(&ft);
     lock_release(&ft_lock);
 }
 
@@ -46,8 +32,8 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
     if(kpage == NULL){
         void * victim = find_evict();
         kpage = victim;
-        spte->swap_index = swap_out(victim);
     }
+
     struct fte* fte = (struct fte*)malloc(sizeof(struct fte));
     if(!fte){
         lock_release(&ft_lock);
@@ -55,14 +41,17 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
     }
     fte->t = thread_current();
     fte->kpage = kpage;
+    // printf("kpage : %p , uapge : %p\n",kpage,spte->upage);
     fte->spte = spte;
-    hash_insert(&ft,&fte->elem);
+    list_push_back(&ft,&fte->elem);
     list_push_back(&evict_list,&fte->evict_elem);
     if(spte->file == NULL){ 
         lock_release(&ft_lock);
+        printf("!\n");
         pagedir_set_page(fte->t->pagedir,spte->upage,kpage,true);
         return fte;
     }
+
     if(spte->status == VM_EXEC_FILE){
         return frame_alloc_exec(spte,flags,fte);
     }
@@ -72,6 +61,7 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
 }
 
 struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct fte* fte){
+    // printf("exec\n");
     void* kpage = fte->kpage;
     file_seek(spte->file,spte->ofs);
     /* Load this page. */
@@ -84,6 +74,7 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
         }    
     
     memset (kpage + spte->read_bytes, 0, spte->zero_bytes);
+    
 
     /* Add the page to the process's address space. */
     if (!pagedir_set_page (fte->t->pagedir, spte->upage, kpage, spte->writable)) 
@@ -98,6 +89,7 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
 }
 
 struct fte* frame_alloc_swap(struct spte* spte, enum palloc_flags flags,struct fte* fte){
+    printf("swap_in %p %p \n",spte->upage, fte->kpage);
     swap_in(spte->swap_index,fte->kpage);
     spte->status = VM_EXEC_FILE;
     pagedir_set_page(fte->t->pagedir,spte->upage,fte->kpage,spte->writable);
@@ -114,9 +106,14 @@ void * find_evict(){
     e = list_front(&evict_list);
     // e = list_next(list_front(&evict_list));
     struct fte* temp  = list_entry(e,struct fte,evict_elem);
+    struct spte* spte = temp->spte;
     list_remove(e);
-    hash_delete(&ft,&temp->elem);
-    temp->spte->status = VM_SWAP_DISK;
+    spte->status = VM_SWAP_DISK;
+    printf("assertion 1 %p %p %p\n",temp->t->pagedir, spte->upage, temp->kpage);
+    spte->swap_index = swap_out(temp->kpage);
+    pagedir_clear_page(temp->t->pagedir,spte->upage);
+    printf("assertion 2\n");
+    list_remove(&temp->elem);
     return temp->kpage;
 
 
@@ -143,3 +140,14 @@ void * find_evict(){
     // }
 }
 
+void spt_exit(tid_t tid){
+    struct list_elem *e;
+    for(e=list_front(&ft);e->next != NULL;e=list_next(e)){
+        struct fte* fte = list_entry(e,struct fte,elem);
+        if(fte->t->tid == tid){
+            free(fte->spte);
+            list_remove(&fte->elem);
+            // free(fte);
+        }
+    }
+}

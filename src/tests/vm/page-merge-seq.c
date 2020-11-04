@@ -80,7 +80,6 @@ merge (void)
   mp_left = CHUNK_CNT;
   for (i = 0; i < CHUNK_CNT; i++){
     mp[i] = buf1 + CHUNK_SIZE * i;
-    printf("%p\n",buf1 + CHUNK_SIZE * i);
   }
   /* Merge. */
   op = buf2;

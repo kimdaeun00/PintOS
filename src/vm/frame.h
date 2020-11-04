@@ -11,16 +11,15 @@ struct fte{
     void * kpage;
     struct spte* spte;
     struct thread* t;
-    struct hash_elem elem;
+    struct list_elem elem;
     struct list_elem evict_elem;
 };
 
-unsigned ft_hash_func(const struct hash_elem *, void *);
-bool ft_less(const struct hash_elem *, const struct hash_elem *, void *);
 void evict_init(void);
 void ft_init(void);
 struct fte* frame_alloc(struct spte*, enum palloc_flags);
 struct fte* frame_alloc_exec(struct spte*, enum palloc_flags,struct fte*);
 struct fte* frame_alloc_swap(struct spte* , enum palloc_flags,struct fte*);
 void * find_evict(void);
+void spt_exit(tid_t);
 #endif

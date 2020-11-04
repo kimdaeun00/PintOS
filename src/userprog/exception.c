@@ -152,7 +152,7 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 #ifdef VM
-   printf("addr : %p\n",fault_addr);
+   // printf("addr : %p\n",fault_addr);
    if (not_present && is_user_vaddr(fault_addr)){ /* fault address > USER BASE 인 경우로 가정 */
          struct spte* spte = spt_get_spte(fault_addr);
          if(spte){
