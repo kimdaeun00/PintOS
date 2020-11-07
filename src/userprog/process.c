@@ -261,7 +261,7 @@ process_exit (void)
   sema_up(&cur->sync_exit);
   sema_down(&cur->sync_free);
   pd = cur->pagedir;
-  spt_exit(cur->tid);
+  spt_exit(cur);
   if (pd != NULL) 
     {
       /* Correct ordering here is crucial.  We must set
@@ -615,7 +615,6 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-
 // #ifdef VM
 //   struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,false);
 //   // printf("in setup_stack\n");

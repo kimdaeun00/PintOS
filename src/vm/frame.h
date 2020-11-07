@@ -21,5 +21,5 @@ struct fte* frame_alloc(struct spte*, enum palloc_flags);
 struct fte* frame_alloc_exec(struct spte*, enum palloc_flags,struct fte*);
 struct fte* frame_alloc_swap(struct spte* , enum palloc_flags,struct fte*);
 void * find_evict(void);
-void spt_exit(tid_t);
+void spt_exit(struct thread*);
 #endif
