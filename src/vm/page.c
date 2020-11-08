@@ -21,7 +21,7 @@ bool spt_less(const struct hash_elem *a, const struct hash_elem *b, void *aux){
 }
 
 struct spte* spte_init(void * upage, struct file *file, uint32_t ofs, uint32_t read_bytes, uint32_t zero_bytes, bool writable){
-    // printf("spte file: %p ofs: %p r: %p z: %p\n", file, ofs, read_bytes, zero_bytes);
+    // printf("spte upage: %p file: %p ofs: %p r: %p z: %p\n",upage, file, ofs, read_bytes, zero_bytes);
     struct spte* spte = (struct spte *)malloc(sizeof(struct spte));
     spte->upage = upage;
     spte->status = VM_EXEC_FILE;
@@ -34,7 +34,6 @@ struct spte* spte_init(void * upage, struct file *file, uint32_t ofs, uint32_t r
     spte->dirty_bit = false;
     hash_insert(&thread_current()->spt,&spte->elem);
     return spte;
-
 }
 
 struct spte* spt_get_spte(void *addr){

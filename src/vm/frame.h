@@ -17,6 +17,7 @@ struct fte{
 
 void evict_init(void);
 void ft_init(void);
+void * get_kpage(enum palloc_flags);
 struct fte* frame_alloc(struct spte*, enum palloc_flags);
 struct fte* frame_alloc_exec(struct spte*, enum palloc_flags,struct fte*);
 struct fte* frame_alloc_swap(struct spte* , enum palloc_flags,struct fte*);

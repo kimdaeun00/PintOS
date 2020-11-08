@@ -9,7 +9,7 @@
 #include "process.h"
 #include "../devices/input.h"
 
-extern struct lock *syscall_lock;
+// extern struct lock *syscall_lock;
 
 void syscall_init (void);
 void halt(void);

@@ -25,14 +25,22 @@ void ft_init(void){
     lock_release(&ft_lock);
 }
 
+void *get_kpage(enum palloc_flags flags){
+    void *kpage = palloc_get_page(flags);
+    if(kpage == NULL){
+        kpage = find_evict();
+    }
+    return kpage; 
+ }
+ 
 struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
     lock_acquire(&ft_lock);
     // printf("spte file : %p upage: %p\n",spte->file, spte->upage);
-    void *kpage = palloc_get_page(flags);
-    if(kpage == NULL){
-        void * victim = find_evict();
-        kpage = victim;
-    }
+    void* kpage = get_kpage(flags);
+    // void *kpage = palloc_get_page(flags);
+    // if(kpage == NULL){
+    //     kpage = find_evict();
+    // }
 
     struct fte* fte = (struct fte*)malloc(sizeof(struct fte));
     if(!fte){
@@ -41,13 +49,13 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
     }
     fte->t = thread_current();
     fte->kpage = kpage;
-    // printf("kpage : %p , uapge : %p\n",kpage,spte->upage);
     fte->spte = spte;
     list_push_back(&ft,&fte->elem);
-    list_push_back(&evict_list,&fte->evict_elem);
-    if(spte->file == NULL){ 
-        lock_release(&ft_lock);
+    
+    if(flags == (PAL_USER | PAL_ZERO)){ 
         pagedir_set_page(fte->t->pagedir,spte->upage,kpage,true);
+        lock_release(&ft_lock);
+        printf("stack fte : %p\n",fte);
         return fte;
     }
 
@@ -60,7 +68,7 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
 }
 
 struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct fte* fte){
-    printf("frame_alloc_exec %p %p %p\n",fte->t->pagedir,spte->upage, fte->kpage);
+    // printf("frame_alloc_exec %p %p %p\n",fte->t->pagedir,spte->upage, fte->kpage);
     void* kpage = fte->kpage;
     file_seek(spte->file,spte->ofs);
     /* Load this page. */
@@ -76,6 +84,7 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
     
 
     /* Add the page to the process's address space. */
+    // printf("%p\n",kpage);
     if (!pagedir_set_page (fte->t->pagedir, spte->upage, kpage, spte->writable)) 
     {
         lock_release(&ft_lock);
@@ -88,7 +97,7 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
 }
 
 struct fte* frame_alloc_swap(struct spte* spte, enum palloc_flags flags,struct fte* fte){
-    printf("swap_in %p %p \n",spte->upage, fte->kpage);
+    // printf("swap_in %p %p \n",spte->upage, fte->kpage);
     swap_in(spte->swap_index,fte->kpage);
     spte->status = VM_EXEC_FILE;
     pagedir_set_page(fte->t->pagedir,spte->upage,fte->kpage,spte->writable);
@@ -99,24 +108,29 @@ struct fte* frame_alloc_swap(struct spte* spte, enum palloc_flags flags,struct f
 
 void * find_evict(){
     struct list_elem *e;
-    ASSERT(!list_empty(&evict_list))
+    ASSERT(!list_empty(&ft))
     // if(list_empty(&evict_list))
     //     return NULL;
     
-    e = list_front(&evict_list);
-    // e = list_pop_front(&evict_list);
+    // e = list_front(&evict_list);
+    e = list_pop_front(&ft);
     // e = list_next(list_front(&evict_list));
-    struct fte* temp  = list_entry(e,struct fte,evict_elem);
+    struct fte* temp  = list_entry(e,struct fte,elem);
     struct spte* spte = temp->spte;
     list_remove(e);
     spte->status = VM_SWAP_DISK;
-    printf("assertion 1 %p %p %p\n",temp->t, spte->upage, temp->kpage);
+    // printf("assertion 1 %p\n",temp->spte);
+    // printf("swap out %p %p\n",spte->upage,temp->kpage);
     spte->swap_index = swap_out(temp->kpage);
+    // printf("thread %s\n",temp->t->name);
     pagedir_clear_page(temp->t->pagedir,spte->upage);
-    list_remove(&temp->elem);
-    list_remove(&temp->evict_elem);
-    printf("after evict : %p\n",list_front(&evict_list));
-    return temp->kpage;
+    // printf("assertion 2\n");
+    void * ret = temp->kpage; 
+    free(temp);
+    // list_remove(&temp->elem);
+    // list_remove(&temp->evict_elem);
+
+    return ret;
 
 
     // for(e=list_front(&evict_list);;e=list_next(e)){
@@ -148,8 +162,6 @@ void spt_exit(struct thread* t){
         struct fte* fte = list_entry(e,struct fte,elem);
         if(fte->t == t){
             list_remove(&fte->elem);
-            list_remove(&fte->evict_elem);
-            // free(fte);
         }
     }
     hash_destroy(&t->spt,spt_hash_func);

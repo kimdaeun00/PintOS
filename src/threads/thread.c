@@ -286,7 +286,6 @@ thread_create (const char *name, int priority,
     return TID_ERROR;
   /* Initialize thread. */
   init_thread (t, name, priority);
-  printf("thread : %p\n",t);
   tid = t->tid = allocate_tid ();
 
   /* Stack frame for kernel_thread(). */
@@ -397,6 +396,7 @@ thread_exit (void)
   
 #ifdef USERPROG
   printf("%s: exit(%d)\n",thread_current()->name,thread_current()->exit_status);
+  printf("exit tid = %d\n",thread_current()->tid);
   process_exit ();
 #endif
   /* Remove thread from all threads list, set our status to dying,

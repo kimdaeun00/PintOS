@@ -9,7 +9,7 @@
 #include "threads/pte.h"
 
 struct lock sys_lock;
-struct lock *syscall_lock = &sys_lock;
+// struct lock *syscall_lock = &sys_lock;
 
 static struct file_descriptor *fd_to_fd(int fd)
 {

@@ -144,6 +144,7 @@ process_execute (const char *file_name)
     return -1;
   }
   tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);
+  printf("exec tid : %d\n",tid);
   for(int i = 0; i<argc; i++){
     free(argv[i]);
   }
@@ -226,6 +227,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
+  printf("waiting for %d\n",child_tid);
   struct list_elem* e;
   struct list  *child_list = &thread_current()->child_list;
   int result;
@@ -261,6 +263,7 @@ process_exit (void)
   sema_up(&cur->sync_exit);
   sema_down(&cur->sync_free);
   pd = cur->pagedir;
+  // printf("destroy pagedir : %p\n",cur->pagedir);
   spt_exit(cur);
   if (pd != NULL) 
     {
@@ -391,8 +394,11 @@ load (const char *file_name, void (**eip) (void), void **esp)
   
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
-  if (t->pagedir == NULL) 
+  if (t->pagedir == NULL) {
+    
     goto done;
+  }
+  // printf("create pagedir : %p\n",t->pagedir);
 #ifdef VM
   hash_init(&t->spt,spt_hash_func,spt_less,NULL);
 #endif
@@ -424,8 +430,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   for (i = 0; i < ehdr.e_phnum; i++) 
     {
       struct Elf32_Phdr phdr;
-      if (file_ofs < 0 || file_ofs > file_length (file))
+      if (file_ofs < 0 || file_ofs > file_length (file)){
+        
         goto done;
+      }
       file_seek (file, file_ofs);
       if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
         goto done;
@@ -441,8 +449,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
           break;
         case PT_DYNAMIC:
         case PT_INTERP:
-        case PT_SHLIB:
+        case PT_SHLIB:{
+          
           goto done;
+        }
         case PT_LOAD:
           if (validate_segment (&phdr, file)) 
             {
@@ -468,7 +478,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
                 }
               if (!load_segment (file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
+                {
+                
                 goto done;
+                }
             }
           else
             goto done;
@@ -477,8 +490,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
     }
   /* Set up stack. */
   if (!setup_stack (esp))
+    {
     goto done;
-
+    }
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
@@ -615,15 +629,19 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-// #ifdef VM
-//   struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,false);
-//   // printf("in setup_stack\n");
-//   kpage = frame_alloc(spte,PAL_USER | PAL_ZERO);
-//   *esp = PHYS_BASE;
-//   return true;
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-
-// #else
+#ifdef VM
+  struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,true);
+  struct fte * temp = frame_alloc(spte,PAL_USER | PAL_ZERO);
+  kpage = temp->kpage;
+  printf("in setup_stack\n");
+  // printf("!!!!!!!!\n");
+  
+  *esp = PHYS_BASE;
+  return true;
+  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  // printf("kpage : %p\n",kpage);
+#else
+  // kpage = get_kpage(PAL_USER|PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -633,7 +651,7 @@ setup_stack (void **esp)
         palloc_free_page (kpage);
     }
   return success;
-// #endif
+#endif
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
