@@ -4,9 +4,30 @@
 #include "hash.h"
 #include "threads/vaddr.h"
 #include "filesys/file.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
 
 unsigned spt_hash_func(const struct hash_elem *temp, void *aux){
      return hash_int((int)hash_entry(temp, struct spte, elem) -> upage);
+}
+
+void spt_hash_destroy(struct hash_elem *e, void *spt){
+    struct spte *spte = hash_entry(e, struct spte, elem);
+    if(spte->status == VM_ON_MEMORY){
+      struct fte* fte = spte_to_fte(spte);
+      if(fte)
+        fte_destroy(fte);
+      else{
+        // printf("no fte but exec %p\n",spte);
+        exit(-1);
+      }
+    }
+    else if(spte->status == VM_SWAP_DISK){
+      swap_remove(spte->swap_index);
+    }
+    // hash_delete(spt,e);
+    free(spte);
+
 }
  
 bool spt_less(const struct hash_elem *a, const struct hash_elem *b, void *aux){

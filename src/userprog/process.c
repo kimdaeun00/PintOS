@@ -144,7 +144,7 @@ process_execute (const char *file_name)
     return -1;
   }
   tid = thread_create (thread_name, PRI_DEFAULT, start_process, fn_copy);
-  printf("exec tid : %d\n",tid);
+  // printf("exec tid : %d\n",tid);
   for(int i = 0; i<argc; i++){
     free(argv[i]);
   }
@@ -227,7 +227,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  printf("waiting for %d\n",child_tid);
+  // printf("waiting for %d\n",child_tid);
   struct list_elem* e;
   struct list  *child_list = &thread_current()->child_list;
   int result;
@@ -243,7 +243,6 @@ process_wait (tid_t child_tid)
   if(!find_child){
     return -1;
   }
-  
   sema_down(&target->sync_exit);
   target->is_waiting = true;
   list_remove(&target->child_elem);
@@ -262,9 +261,9 @@ process_exit (void)
      to the kernel-only page directory. */
   sema_up(&cur->sync_exit);
   sema_down(&cur->sync_free);
+  spt_exit(cur->spt);
   pd = cur->pagedir;
   // printf("destroy pagedir : %p\n",cur->pagedir);
-  spt_exit(cur);
   if (pd != NULL) 
     {
       /* Correct ordering here is crucial.  We must set
@@ -289,7 +288,6 @@ process_exit (void)
   // hash_destroy(&cur->spt,spt_hash_func);
   if(!cur->is_waiting) //parent가 기다리지 않는 경우
     list_remove(&cur->child_elem);
-  
 
 }
 
@@ -631,17 +629,18 @@ setup_stack (void **esp)
   bool success = false;
 #ifdef VM
   struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,true);
-  struct fte * temp = frame_alloc(spte,PAL_USER | PAL_ZERO);
-  kpage = temp->kpage;
-  printf("in setup_stack\n");
-  // printf("!!!!!!!!\n");
+  struct fte* fte = install_new_fte(get_kpage(PAL_USER | PAL_ZERO),spte);
+  success = install_page(spte->upage,fte->kpage,true);
+  // printf("in setup_stack\n");
+  if(success)
+    *esp = PHYS_BASE;
+  else
+    palloc_free_page(fte->kpage);
   
-  *esp = PHYS_BASE;
-  return true;
-  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  // printf("kpage : %p\n",kpage);
+  return success;
+  
 #else
-  // kpage = get_kpage(PAL_USER|PAL_ZERO);
+  // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);

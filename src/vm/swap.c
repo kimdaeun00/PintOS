@@ -19,9 +19,9 @@ void swap_init(void){
 }
 
 void swap_in(block_sector_t swap_index, void *kpage){
+    // printf("swap in\n");
     lock_acquire(&st_lock);
     if(bitmap_test(st,swap_index)){
-        // printf("!!!!\n");
         lock_release(&st_lock);
         exit(-1);
     }
@@ -30,12 +30,12 @@ void swap_in(block_sector_t swap_index, void *kpage){
     for(int i=0;i<8;i++){
         block_read(swap_disk, i+ 8*swap_index, kpage+i*BLOCK_SECTOR_SIZE);
     }
-    // bitmap_set_multiple(st,swap_index,8,true);
-    // bitmap_set(st,swap_index,true);
+    
     lock_release(&st_lock);
 }
 
 block_sector_t swap_out(void * kpage){
+    // printf("swap out\n");
     lock_acquire(&st_lock);
     block_sector_t available = bitmap_scan_and_flip(st,0,1,true);
     if(available == BITMAP_ERROR){
@@ -48,4 +48,10 @@ block_sector_t swap_out(void * kpage){
 
     lock_release(&st_lock);
     return available;
+}
+
+void swap_remove(block_sector_t idx){
+    lock_acquire(&st_lock);
+    bitmap_set(st,idx,true);
+    lock_release(&st_lock);
 }

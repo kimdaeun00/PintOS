@@ -135,7 +135,6 @@ main (void)
 #ifdef VM
   ft_init();
   swap_init();
-  evict_init();
 #endif
 
   printf ("Boot complete.\n");

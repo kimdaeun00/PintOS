@@ -159,6 +159,7 @@ syscall_handler(struct intr_frame *f)
     {
       exit(-1);
     }
+
     f->eax = write(*(int *)(esp + 1), (const char *)(*(esp + 2)), *(unsigned *)(esp + 3));
     break;
 

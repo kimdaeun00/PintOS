@@ -159,7 +159,6 @@ page_fault (struct intr_frame *f)
          if(spte){
             // printf("lol1 :%p\n",spte->upage);
             if(frame_alloc(spte, PAL_USER)!=NULL) 
-               // printf("lol1 over\n");
                return;
          } 
          else{
@@ -171,9 +170,9 @@ page_fault (struct intr_frame *f)
          // }
       }
 #endif
-   printf("lol3 :%p\n",fault_addr);
+   // printf("lol3 :%p\n",fault_addr);
+   // printf("lol3 tid : %d\n",thread_current()->tid);
    if(is_kernel_vaddr(fault_addr)||!user||not_present){
-      // printf("fault exit : %p %d %d %d %d\n", fault_addr,is_kernel_vaddr(fault_addr), !user, f->error_code, not_present);
       exit(-1);
    }
 
