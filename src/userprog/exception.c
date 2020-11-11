@@ -129,6 +129,7 @@ page_fault (struct intr_frame *f)
   bool not_present;  /* True: not-present page, false: writing r/o page. */
   bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
+  bool check1, check2;
   void *fault_addr;  /* Fault address. */
 
   /* Obtain faulting address, the virtual address that was
@@ -152,27 +153,36 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+  
+  void* esp = f->esp;
+   if(!user)
+      esp = thread_current()->esp;
+
+  check1 = fault_addr == esp - 4 || fault_addr == esp - 32 || esp <= fault_addr;
+  check2 = is_user_vaddr(fault_addr) && PHYS_BASE - 0x800000 <= fault_addr;
 #ifdef VM
    // printf("addr : %p\n",fault_addr);
+   
    if (not_present && is_user_vaddr(fault_addr)){ /* fault address > USER BASE 인 경우로 가정 */
          struct spte* spte = spt_get_spte(fault_addr);
          if(spte){
             // printf("lol1 :%p\n",spte->upage);
             if(frame_alloc(spte, PAL_USER)!=NULL) 
                return;
-         } 
-         else{
-            // printf("lol2 %p \n",fault_addr);
          }
-         // else if{
-         //    printf("stack growth required\n");
-         //     //한페이지 용량정도 더했을때 esp이거나 valid한 주소일 경우 stack_growth가 필요한 상황이
-         // }
+         else if(check1 && check2){ //if stack growth required
+            // printf("esp %p, fault addr %p\n",esp,fault_addr);
+            // printf("stack growth\n");
+            struct spte* spte = spte_init(pg_round_down(fault_addr),VM_STK_GROW,NULL,0,0,0,true);
+            if(frame_alloc(spte,PAL_USER|PAL_ZERO))
+               return;
+         }
       }
 #endif
    // printf("lol3 :%p\n",fault_addr);
    // printf("lol3 tid : %d\n",thread_current()->tid);
    if(is_kernel_vaddr(fault_addr)||!user||not_present){
+      // printf("!!!! %d %d\n",check1,check2);
       exit(-1);
    }
 

@@ -2,6 +2,7 @@
 #include "kernel/bitmap.h"
 #include "threads/synch.h"
 #include "devices/block.h"
+#include "threads/thread.h"
 #include "vm/page.h"
 #include "threads/vaddr.h"
 
@@ -19,24 +20,24 @@ void swap_init(void){
 }
 
 void swap_in(block_sector_t swap_index, void *kpage){
-    // printf("swap in\n");
     lock_acquire(&st_lock);
+    // printf("swap in start %d\n",thread_current()->tid);
     if(bitmap_test(st,swap_index)){
         lock_release(&st_lock);
         exit(-1);
     }
     bitmap_flip(st,swap_index);
-    
     for(int i=0;i<8;i++){
         block_read(swap_disk, i+ 8*swap_index, kpage+i*BLOCK_SECTOR_SIZE);
     }
     
+    // printf("swap in end\n");
     lock_release(&st_lock);
 }
 
 block_sector_t swap_out(void * kpage){
-    // printf("swap out\n");
     lock_acquire(&st_lock);
+    // printf("swap out start %d\n",thread_current()->tid);
     block_sector_t available = bitmap_scan_and_flip(st,0,1,true);
     if(available == BITMAP_ERROR){
         lock_release(&st_lock);
@@ -45,7 +46,7 @@ block_sector_t swap_out(void * kpage){
     for(int i=0;i<8;i++){
         block_write(swap_disk, i+ 8*available, kpage+i*BLOCK_SECTOR_SIZE);
     }
-
+    // printf("swap out end\n");
     lock_release(&st_lock);
     return available;
 }

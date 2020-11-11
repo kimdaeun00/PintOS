@@ -583,7 +583,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 #ifdef VM
       // printf("spte_init %p\n",upage);
-      if(spte_init(upage,file,ofs,page_read_bytes,page_zero_bytes,writable) == NULL){
+      if(spte_init(upage,VM_EXEC_FILE,file,ofs,page_read_bytes,page_zero_bytes,writable) == NULL){
         return false;
       }
 #else
@@ -628,7 +628,7 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 #ifdef VM
-  struct spte* spte = spte_init(PHYS_BASE - PGSIZE,NULL,0,0,0,true);
+  struct spte* spte = spte_init(PHYS_BASE - PGSIZE,VM_ON_MEMORY,NULL,0,0,0,true);
   struct fte* fte = install_new_fte(get_kpage(PAL_USER | PAL_ZERO),spte);
   success = install_page(spte->upage,fte->kpage,true);
   // printf("in setup_stack\n");
@@ -641,6 +641,7 @@ setup_stack (void **esp)
   
 #else
   // kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  // kpage = get_kpage(PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -666,9 +667,10 @@ static bool
 install_page (void *upage, void *kpage, bool writable)
 {
   struct thread *t = thread_current ();
-
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
+  struct fte* fte = spte_to_fte(spt_get_spte(upage));
+  // fte->pinned = false;
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }

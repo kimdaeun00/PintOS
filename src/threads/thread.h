@@ -101,7 +101,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-   void* esp;
+   
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -118,7 +118,7 @@ struct thread
 
 #ifdef VM
    struct hash spt;
-   
+   void* esp;
 #endif
 
     /* Owned by thread.c. */

@@ -7,6 +7,7 @@
 #include "userprog/pagedir.h"
 #include "threads/palloc.h"
 #include "threads/pte.h"
+#include "vm/frame.h"
 
 struct lock sys_lock;
 // struct lock *syscall_lock = &sys_lock;
@@ -72,7 +73,7 @@ syscall_handler(struct intr_frame *f)
   int *esp = (int *)(f->esp);
   thread_current()->esp = esp;
   // if(*esp != 6)
-  //   printf("syscall num : %d\n",*esp);
+    // printf("syscall num : %d\n",*esp);
   // printf("content in esp : %d\n",*(char *)(((char *)(esp))));
   // printf("address in esp : %p\n",(char *)(((char *)(esp))));
   if(!is_userspace(esp,0)){
@@ -315,8 +316,11 @@ int read(int fd, void *buffer, unsigned size)
     lock_release(&sys_lock);
     return -1;
   }
-
+  // frame_alloc_file(buffer,size);
   result = file_read(file->file, buffer, size);
+  // frame_unpin_file(buffer,size);
+
+
   lock_release(&sys_lock);
   return result;
 }
@@ -340,7 +344,10 @@ int write(int fd, const void *buffer, unsigned size)
       lock_release(&sys_lock);
       return -1;
     }
+    // frame_alloc_file(buffer,size);
     result = file_write(file->file, buffer, size);
+    // frame_unpin_file(buffer,size);
+
     lock_release(&sys_lock);
     return result;
   }
@@ -350,8 +357,10 @@ void seek(int fd, unsigned position)
 {
   lock_acquire(&sys_lock);
   struct file * f = fd_to_fd(fd)->file;
-  if(f == NULL)
+  if(!f){
+    lock_release(&sys_lock);
     return;
+  }
   file_seek(f, position);
   lock_release(&sys_lock);
 }

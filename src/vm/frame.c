@@ -8,6 +8,7 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 #include "string.h"
+#include "threads/vaddr.h"
 
 struct list ft;
 struct lock ft_lock;
@@ -33,7 +34,6 @@ struct fte* spte_to_fte(struct spte* spte){
 
 void fte_destroy(struct fte* fte){
     lock_acquire(&ft_lock);
-    // printf("destory out : %p\n",fte->spte);
     list_remove(&fte->elem);
     free(fte);
     lock_release(&ft_lock);
@@ -61,6 +61,7 @@ struct fte* install_new_fte(void *kpage, struct spte* spte){
     fte->t = thread_current();
     fte->kpage = kpage;
     fte->spte = spte;
+    // fte->pinned = true;
     list_push_back(&ft,&fte->elem);
     lock_release(&ft_lock);
     return fte;
@@ -70,18 +71,19 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
     void* kpage = get_kpage(flags);
     struct fte* fte = install_new_fte(kpage,spte);
 
-    // if(flags == (PAL_USER | PAL_ZERO)){ 
-    //     pagedir_set_page(fte->t->pagedir,spte->upage,kpage,true);
-    //     lock_release(&ft_lock);
-    //     printf("stack fte : %p\n",fte);
-    //     return fte;
-    // }
     if(spte->status == VM_EXEC_FILE){
         return frame_alloc_exec(spte,flags,fte);
     }
     else if(spte->status == VM_SWAP_DISK){
         return frame_alloc_swap(spte,flags,fte);
-    }   
+    }
+    else if(spte->status == VM_STK_GROW){
+        memset(fte->kpage,0,PGSIZE);
+        pagedir_set_page(fte->t->pagedir,spte->upage,fte->kpage,spte->writable);
+        // fte->pinned = false;
+    }
+    return fte;
+    
 }
 
 struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct fte* fte){
@@ -113,6 +115,7 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
     }
     lock_release(&ft_lock);
     spte->status = VM_ON_MEMORY;
+    // fte->pinned = false;
     return fte;
 }
 
@@ -123,28 +126,43 @@ struct fte* frame_alloc_swap(struct spte* spte, enum palloc_flags flags,struct f
     spte->status = VM_ON_MEMORY;
     pagedir_set_page(fte->t->pagedir,spte->upage,fte->kpage,spte->writable);
     lock_release(&ft_lock);
-    spte->status = VM_ON_MEMORY;
+    fte->pinned = false;
     return fte;
 }
 
 
 void * find_evict(){
-    struct list_elem *e;
     ASSERT(!list_empty(&ft))
-    
+
+    struct list_elem *e;
+    // bool detect = false;
     lock_acquire(&ft_lock);
+    // printf("ft size : %d\n",list_size(&ft));
+    /* frame table에서 pinned된 애들(read나 write될 애들)은 evict에서 제외시킴 */
+    // struct fte* temp = NULL;
+    // int i=0;
+    // for(e=list_front(&ft); e->next != NULL ;e= list_next(e)){
+    //     temp  = list_entry(e, struct fte, elem);
+    //     if(!temp->pinned){
+    //         detect = true;
+    //         // printf("#%d\n",++i);    
+    //         break;
+    //     }
+    // }
+    
+    // ASSERT(detect)
+
     e = list_pop_front(&ft);
     struct fte* temp  = list_entry(e,struct fte,elem);
-    // printf("swap out fte :  kpage : %p , upage:  %p, spte : %p, thread : %d\n",temp->kpage,temp->spte->upage,temp->spte,temp->t->tid);
+    
     struct spte* spte = temp->spte;
     spte->status = VM_SWAP_DISK;
-    // printf("evict out : %p\n",spte);
+    
     list_remove(e);
     spte->swap_index = swap_out(temp->kpage);
     pagedir_clear_page(temp->t->pagedir,spte->upage);
     void * ret = temp->kpage; 
-    // palloc_free_page(temp->kpage);
-    // list_remove(&temp->elem);
+
     free(temp);
     lock_release(&ft_lock);
     return ret;
@@ -175,14 +193,28 @@ void * find_evict(){
 
 void spt_exit(struct hash spt){
     hash_destroy(&spt,spt_hash_destroy);
-    
-    // struct list_elem *e;
-    // for(e=list_front(&ft);e->next != NULL;e=list_next(e)){
-    //     struct fte* fte = list_entry(e,struct fte,elem);
-    //     if(fte->t->tid == tid){
-    //         free(fte->spte);
-    //         list_remove(&fte->elem);
-    //         // free(fte);
-    //     }
-    // }
+}
+
+/* kpage fte의 pinned를 pin으로 설정 */
+void frame_alloc_file(void* buffer, unsigned size){
+    unsigned bound = buffer + size;
+    int i=0;
+    for(void *temp = pg_round_down(buffer); temp<bound; temp+=PGSIZE){
+        struct spte * spte = spt_get_spte(temp);
+        if(!spte)
+            exit(-1);
+        spte->status = VM_EXEC_FILE;
+        struct fte * fte = frame_alloc(spte,PAL_USER);
+    }
+}
+
+void frame_unpin_file(void *buffer, unsigned size){
+    unsigned bound = buffer + size;
+    for(void *temp = pg_round_down(buffer); temp<bound; temp+=PGSIZE){
+        struct spte * spte = spt_get_spte(temp);
+        if(!spte)
+            exit(-1);
+        struct fte* fte = spte_to_fte(spte);
+        fte->pinned = false;
+    }
 }

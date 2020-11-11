@@ -12,6 +12,7 @@ struct fte{
     struct spte* spte;
     struct thread* t;
     struct list_elem elem;
+    bool pinned;    //install_new_fte에서 false로 초기화
 };
 
 void ft_init(void);
@@ -24,4 +25,6 @@ struct fte* frame_alloc_swap(struct spte* , enum palloc_flags,struct fte*);
 void * find_evict(void);
 void spt_exit(struct hash);
 struct fte* install_new_fte(void *, struct spte*);
+void frame_alloc_file(void*, unsigned);
+void frame_unpin_file(void *, unsigned);
 #endif
