@@ -5,6 +5,8 @@
 
 #include <debug.h>
 
+struct lock st_lock;
+
 void swap_init(void);
 void swap_in(block_sector_t, void *);
 block_sector_t swap_out(void *);

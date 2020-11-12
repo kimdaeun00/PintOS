@@ -364,6 +364,7 @@ ide_read (void *d_, block_sector_t sec_no, void *buffer)
 static void
 ide_write (void *d_, block_sector_t sec_no, const void *buffer)
 {
+  // printf("!!\n");
   struct ata_disk *d = d_;
   struct channel *c = d->channel;
   lock_acquire (&c->lock);

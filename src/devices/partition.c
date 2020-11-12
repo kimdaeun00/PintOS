@@ -313,6 +313,7 @@ partition_read (void *p_, block_sector_t sector, void *buffer)
 static void
 partition_write (void *p_, block_sector_t sector, const void *buffer)
 {
+  // printf("??\n");
   struct partition *p = p_;
   block_write (p->block, p->start + sector, buffer);
 }

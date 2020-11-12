@@ -3,6 +3,7 @@
 #include "threads/synch.h"
 #include "devices/block.h"
 #include "threads/thread.h"
+#include "userprog/syscall.h"
 #include "vm/page.h"
 #include "threads/vaddr.h"
 
@@ -20,12 +21,16 @@ void swap_init(void){
 }
 
 void swap_in(block_sector_t swap_index, void *kpage){
-    lock_acquire(&st_lock);
     // printf("swap in start %d\n",thread_current()->tid);
     if(bitmap_test(st,swap_index)){
+        exit(-1);
+    }
+    lock_acquire(&st_lock);
+    if(swap_index >= bitmap_size(&st)){
         lock_release(&st_lock);
         exit(-1);
     }
+
     bitmap_flip(st,swap_index);
     for(int i=0;i<8;i++){
         block_read(swap_disk, i+ 8*swap_index, kpage+i*BLOCK_SECTOR_SIZE);
@@ -37,7 +42,6 @@ void swap_in(block_sector_t swap_index, void *kpage){
 
 block_sector_t swap_out(void * kpage){
     lock_acquire(&st_lock);
-    // printf("swap out start %d\n",thread_current()->tid);
     block_sector_t available = bitmap_scan_and_flip(st,0,1,true);
     if(available == BITMAP_ERROR){
         lock_release(&st_lock);

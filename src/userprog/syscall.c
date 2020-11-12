@@ -7,10 +7,17 @@
 #include "userprog/pagedir.h"
 #include "threads/palloc.h"
 #include "threads/pte.h"
+#include "vm/page.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 
-struct lock sys_lock;
-// struct lock *syscall_lock = &sys_lock;
+static int
+get_user (const uint8_t *uaddr) {
+  int result;
+  asm ("movl $1f, %0; movzbl %1, %0; 1:"
+       : "=&a" (result) : "m" (*uaddr));
+  return result;
+}
 
 static struct file_descriptor *fd_to_fd(int fd)
 {
@@ -48,10 +55,11 @@ static bool is_userspace(int *esp, int n)
 {
   
   int *temp;
+  
   for (int i = 0; i < n + 1; i++)
   {
     temp = esp + i + 1;
-    if (!is_user_vaddr((void *)(temp)) || !is_user_vaddr((void *)(((char *)(temp)) + 3)))
+    if (!is_user_vaddr((void *)(temp))  || !is_user_vaddr((void *)(((char *)(temp)) + 3))) //|| get_user(temp) == -1
     {
       return false;
     }
@@ -72,10 +80,7 @@ syscall_handler(struct intr_frame *f)
 {
   int *esp = (int *)(f->esp);
   thread_current()->esp = esp;
-  // if(*esp != 6)
-    // printf("syscall num : %d\n",*esp);
-  // printf("content in esp : %d\n",*(char *)(((char *)(esp))));
-  // printf("address in esp : %p\n",(char *)(((char *)(esp))));
+
   if(!is_userspace(esp,0)){
     exit(-1);
   }
@@ -289,12 +294,13 @@ int open(const char *file)
 
 int filesize(int fd)
 {
+  lock_acquire(&sys_lock);
   struct file_descriptor *file = fd_to_fd(fd);
   if (file == NULL)
   {
+    lock_release(&sys_lock);
     return -1;
   }
-  lock_acquire(&sys_lock);
   int result = file_length(file->file);
   lock_release(&sys_lock);
   return result;
@@ -302,9 +308,10 @@ int filesize(int fd)
 
 int read(int fd, void *buffer, unsigned size)
 {
-  is_valid_arg(buffer);
-  int result;
   lock_acquire(&sys_lock);
+  is_valid_arg(buffer);
+  // printf("buffer : %p\n",pg_round_down(buffer));
+  int result;
   if (fd == 0)
   {
     result = input_getc();
@@ -316,20 +323,21 @@ int read(int fd, void *buffer, unsigned size)
     lock_release(&sys_lock);
     return -1;
   }
-  // frame_alloc_file(buffer,size);
+  
+  set_evict_file(buffer,size,true);
   result = file_read(file->file, buffer, size);
-  // frame_unpin_file(buffer,size);
-
-
+  set_evict_file(buffer,size,false);
+  
   lock_release(&sys_lock);
   return result;
 }
 
 int write(int fd, const void *buffer, unsigned size)
 {
+  lock_acquire(&sys_lock);
+
   is_valid_arg(buffer);
   int result;
-  lock_acquire(&sys_lock);
   if (fd == 1)
   {
     putbuf(buffer, size); //실제로는??
@@ -344,9 +352,10 @@ int write(int fd, const void *buffer, unsigned size)
       lock_release(&sys_lock);
       return -1;
     }
-    // frame_alloc_file(buffer,size);
+    set_evict_file(buffer,size,true);
     result = file_write(file->file, buffer, size);
-    // frame_unpin_file(buffer,size);
+    set_evict_file(buffer,size,false);
+
 
     lock_release(&sys_lock);
     return result;
@@ -376,8 +385,8 @@ unsigned tell(int fd)
 void close(int fd)
 {
   // 닫힌 fd값 free해주기
-  struct file_descriptor *temp = fd_to_fd(fd);
   lock_acquire(&sys_lock);
+  struct file_descriptor *temp = fd_to_fd(fd);
   if (temp != NULL)
   {
     list_remove(&(temp->elem));
@@ -390,4 +399,21 @@ void close(int fd)
     lock_release(&sys_lock);
     exit(-1);
   }
+}
+
+
+void set_evict_file(void *buffer, unsigned size, bool inevictable){
+    unsigned bound = buffer + size;
+    for(void *temp = pg_round_down(buffer); temp<bound; temp+=PGSIZE){
+        if(get_user(temp)== -1){
+            exit(-1);
+        } 
+        struct spte * spte = spt_get_spte(temp);
+        if(!spte){
+            printf("no spte\n");
+            exit(-1);
+        }
+        struct fte* fte = spte_to_fte(spte);
+        fte->inevictable = inevictable;
+    }
 }

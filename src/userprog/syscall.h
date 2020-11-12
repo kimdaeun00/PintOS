@@ -10,7 +10,9 @@
 #include "../devices/input.h"
 
 // extern struct lock *syscall_lock;
+struct lock sys_lock;
 
+static int get_user (const uint8_t *);
 void syscall_init (void);
 void halt(void);
 void exit(int);
@@ -25,5 +27,6 @@ int write(int,const void*, unsigned);
 void seek(int,unsigned);
 unsigned tell(int);
 void close(int);
+void set_evict_file(void *, unsigned , bool);
 
 #endif /* userprog/syscall.h */

@@ -279,6 +279,7 @@ process_exit (void)
     } 
   struct list_elem *e;
   struct file_descriptor *temp;
+
   for(e=list_begin(&cur->fd_list) ;e->next !=NULL ;){
     temp = list_entry(e,struct file_descriptor,elem);
     file_close(temp->file);
@@ -631,6 +632,7 @@ setup_stack (void **esp)
   struct spte* spte = spte_init(PHYS_BASE - PGSIZE,VM_ON_MEMORY,NULL,0,0,0,true);
   struct fte* fte = install_new_fte(get_kpage(PAL_USER | PAL_ZERO),spte);
   success = install_page(spte->upage,fte->kpage,true);
+  fte->inevictable = false;
   // printf("in setup_stack\n");
   if(success)
     *esp = PHYS_BASE;
@@ -670,7 +672,6 @@ install_page (void *upage, void *kpage, bool writable)
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */
   struct fte* fte = spte_to_fte(spt_get_spte(upage));
-  // fte->pinned = false;
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
 }
