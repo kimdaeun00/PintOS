@@ -2,6 +2,7 @@
 #include <debug.h>
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include <list.h>
 
 /* An open file. */
 struct file 
@@ -69,7 +70,7 @@ off_t
 file_read (struct file *file, void *buffer, off_t size) 
 {
   off_t bytes_read = inode_read_at (file->inode, buffer, size, file->pos);
-  file->pos += bytes_read;
+  file->pos += bytes_read;  
   return bytes_read;
 }
 
@@ -153,6 +154,7 @@ file_length (struct file *file)
 void
 file_seek (struct file *file, off_t new_pos)
 {
+
   ASSERT (file != NULL);
   ASSERT (new_pos >= 0);
   file->pos = new_pos;

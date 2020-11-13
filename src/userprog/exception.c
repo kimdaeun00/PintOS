@@ -4,6 +4,10 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "threads/palloc.h"
+#include "vm/frame.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -125,6 +129,7 @@ page_fault (struct intr_frame *f)
   bool not_present;  /* True: not-present page, false: writing r/o page. */
   bool write;        /* True: access was write, false: access was read. */
   bool user;         /* True: access by user, false: access by kernel. */
+  bool check1, check2;
   void *fault_addr;  /* Fault address. */
 
   /* Obtain faulting address, the virtual address that was
@@ -134,6 +139,7 @@ page_fault (struct intr_frame *f)
      See [IA32-v2a] "MOV--Move to/from Control Registers" and
      [IA32-v3a] 5.15 "Interrupt 14--Page Fault Exception
      (#PF)". */
+
   asm ("movl %%cr2, %0" : "=r" (fault_addr));
 
   /* Turn interrupts back on (they were only off so that we could
@@ -147,6 +153,32 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+  
+  void* esp = f->esp;
+   if(!user)
+      esp = thread_current()->esp;
+
+  check1 = fault_addr == esp - 4 || fault_addr == esp - 32 || esp <= fault_addr;
+  check2 = is_user_vaddr(fault_addr) && PHYS_BASE - 0x800000 <= fault_addr;
+#ifdef VM
+   // printf("addr : %p\n",fault_addr);
+   
+   if (not_present && is_user_vaddr(fault_addr)){ /* fault address > USER BASE 인 경우로 가정 */
+         struct spte* spte = spt_get_spte(fault_addr);
+         if(spte){
+            if(frame_alloc(spte, PAL_USER)!=NULL) 
+               return;
+         }
+         else if(check1 && check2){ //if stack growth required
+            struct spte* spte = spte_init(pg_round_down(fault_addr),VM_STK_GROW,NULL,0,0,0,true);
+            if(frame_alloc(spte,PAL_USER|PAL_ZERO))
+               return;
+         }
+      }
+#endif
+   if(is_kernel_vaddr(fault_addr)||!user||not_present){
+      exit(-1);
+   }
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to

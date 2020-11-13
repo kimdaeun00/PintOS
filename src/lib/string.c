@@ -279,12 +279,10 @@ void *
 memset (void *dst_, int value, size_t size) 
 {
   unsigned char *dst = dst_;
-
   ASSERT (dst != NULL || size == 0);
-  
   while (size-- > 0)
     *dst++ = value;
-
+    
   return dst_;
 }
 
@@ -295,7 +293,6 @@ strlen (const char *string)
   const char *p;
 
   ASSERT (string != NULL);
-
   for (p = string; *p != '\0'; p++)
     continue;
   return p - string;

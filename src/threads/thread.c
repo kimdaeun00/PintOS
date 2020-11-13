@@ -21,6 +21,16 @@
 #define THREAD_MAGIC 0xcd6abf4b
 
 /*less function for list_method argument*/
+bool less_lock(const struct list_elem *a, const struct list_elem *b, void *aux){
+  int64_t priority_a = list_entry(list_front(&list_entry(a, struct lock, elem) -> semaphore .waiters),struct thread, elem)->priority;
+  int64_t priority_b = list_entry(list_front(&list_entry(b, struct lock, elem) -> semaphore .waiters),struct thread, elem)->priority;
+  if(priority_a > priority_b){
+    return true;
+  }
+  else{
+    return false;
+  }
+}
 
 bool less_priority(const struct list_elem *a, const struct list_elem *b, void *aux){
   int64_t priority_a = list_entry(a, struct thread, elem) -> priority;
@@ -123,7 +133,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
   list_init (&sleep_list);
-
+  
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -136,6 +146,7 @@ thread_init (void)
 void
 thread_start (void) 
 {
+  
   /* Create the idle thread. */
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
@@ -179,6 +190,7 @@ thread_tick (void)
 void
 thread_wake(int64_t ticks)
 {
+  // printf("wake : %s\n",thread_current()->name );
   current_ticks = ticks;
   while(!list_empty(&sleep_list) && (list_entry(list_back(&sleep_list), struct thread, elem) -> endtime) <= ticks){
     struct thread *temp = list_entry(list_pop_back(&sleep_list),struct thread, elem);
@@ -191,6 +203,7 @@ thread_wake(int64_t ticks)
 
 void
 thread_insert_sleep(int64_t endtime){
+  
   struct thread *t = thread_current ();
   // printf("%lld current : %d %s end at %d\n",kernel_ticks,t->tid,t->name,endtime);
   t->endtime = endtime;
@@ -214,20 +227,20 @@ void print_current(void){ //print information of current thread
   printf("tid : %d , sleeping : %d\n",thread_current()->tid,list_size(&sleep_list));
 }
 
-void print_list(struct list l){ // print whole members of input list
-  int i =0;
-  struct list_elem *e;
-  printf("NOW : %d\n",kernel_ticks);
-  printf("Sleeping list :\n");
-  if(list_size(&l)==0){
-    printf("Empty list\n\n");
-  }
-  for(e= list_begin(&sleep_list);e!=list_end(&sleep_list); ){
-    printf("#%d<tid:%d, name:%s end:%d>\n",i++,list_entry(e,struct thread, elem)->tid,list_entry(e,struct thread, elem)->name, list_entry(e,struct thread, elem)->endtime);
-    e = list_next(e);
-  }
-  printf("\n\n");
-}
+// void print_list(struct list l){ // print whole members of input list
+//   int i =0;
+//   struct list_elem *e;
+//   printf("NOW : %d\n",kernel_ticks);
+//   printf("Sleeping list :\n");
+//   if(list_size(&l)==0){
+//     printf("Empty list\n\n");
+//   }
+//   for(e= list_begin(&sleep_list);e!=list_end(&sleep_list); ){
+//     printf("#%d<tid:%d, name:%s end:%d>\n",i++,list_entry(e,struct thread, elem)->tid,list_entry(e,struct thread, elem)->name, list_entry(e,struct thread, elem)->endtime);
+//     e = list_next(e);
+//   }
+//   printf("\n\n");
+// }
 
 /* Prints thread statistics. */
 void
@@ -264,14 +277,13 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
-
+  // printf("!!!\n");
   ASSERT (function != NULL);
 
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
     return TID_ERROR;
-
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
@@ -290,9 +302,12 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+  
+  /*add to current thread's child list*/
+  // list_push_back(&thread_current()->child_list,&t->child_elem);
+
   /* Add to run queue. */
   thread_unblock (t);
-
   return tid;
 }
 
@@ -307,7 +322,6 @@ thread_block (void)
 {
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
-
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
 }
@@ -324,21 +338,19 @@ void
 thread_unblock (struct thread *t) 
 {
   enum intr_level old_level;
-  // printf("unblock : %s %d\n",t->name,t->priority);
+  // printf("unblock : %s\n",&t->name);
 
   ASSERT (is_thread (t));
-
   old_level = intr_disable ();
+  
   ASSERT (t->status == THREAD_BLOCKED);
   thread_insert_ready(t);
-  // list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
-  // printf("ready size : %d\n",list_size(&ready_list));
-  // printf("current : %s\n",thread_current()->name);
-  if(thread_current() != idle_thread && !list_empty(&ready_list) && thread_current()->priority <= list_entry(list_front(&ready_list), struct thread, elem) -> priority){
+  if(thread_current() != idle_thread && !list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem) -> priority){
+    // printf("yield in unblock\n");
     thread_yield();
   }
-  
+  // printf("no yeild in unblock\n");  
   intr_set_level (old_level);
 }
 
@@ -381,11 +393,13 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
-
+  
 #ifdef USERPROG
+  printf("%s: exit(%d)\n",thread_current()->name,thread_current()->exit_status);
+  // printf("thread exit tid : %d\n",thread_current()->tid);
+  // printf("exit tid = %d\n",thread_current()->tid);
   process_exit ();
 #endif
-
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us
      when it calls thread_schedule_tail(). */
@@ -404,7 +418,6 @@ thread_yield (void)
   struct thread *cur = thread_current ();
   // printf("yeild : %s\n",cur->name);
   enum intr_level old_level;
-  
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
@@ -437,8 +450,18 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
-  if((!list_empty(&ready_list)) && thread_current()->priority <= list_entry(list_front(&ready_list), struct thread, elem) -> priority){
+  if(thread_current()->priority != thread_current()->real_priority){
+    if(thread_current()->priority <new_priority){
+      thread_current()->priority = new_priority;
+    }
+    thread_current()->real_priority = new_priority;
+  }
+  else{
+    thread_current()->priority = new_priority;
+    thread_current()->real_priority = new_priority;
+  }
+
+  if((!list_empty(&ready_list)) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem) -> priority){
     thread_yield();
   }
 }
@@ -557,7 +580,7 @@ static void
 init_thread (struct thread *t, const char *name, int priority)
 {
   enum intr_level old_level;
-
+  
   ASSERT (t != NULL);
   ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
   ASSERT (name != NULL);
@@ -567,7 +590,19 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->real_priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init(&t->lock_list);
+  list_init(&t->fd_list);
+  list_init(&t->child_list);
+  sema_init(&t->sync_exit,0);
+  sema_init(&t->sync_free,0);
+  sema_init(&t->loading,0);
+  t->is_waiting = false;
+  t->esp = PHYS_BASE;
+  list_push_back(&running_thread()->child_list,&t->child_elem);
+
+  t->exit_status = -1;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);

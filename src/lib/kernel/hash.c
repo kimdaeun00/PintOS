@@ -315,7 +315,6 @@ static struct hash_elem *
 find_elem (struct hash *h, struct list *bucket, struct hash_elem *e) 
 {
   struct list_elem *i;
-
   for (i = list_begin (bucket); i != list_end (bucket); i = list_next (i)) 
     {
       struct hash_elem *hi = list_elem_to_hash_elem (i);

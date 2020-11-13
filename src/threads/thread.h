@@ -4,6 +4,10 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
+#ifdef VM
+#include "vm/page.h"
+#endif
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -87,16 +91,34 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
+    int priority;                       /* Priority. - current priority */
     struct list_elem allelem;           /* List element for all threads list. */
    int64_t endtime;                    /* Time when thread need to wake up*/
+   int real_priority;                  /*original priority before/after donation*/
+   struct lock *waiting_lock;
+   struct list lock_list;
+
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+   
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
-    uint32_t *pagedir;                  /* Page directory. */
+   int exit_status;
+   uint32_t *pagedir;                  /* Page directory. */
+   struct list fd_list;
+   struct list child_list;
+   struct list_elem child_elem;
+   struct semaphore sync_exit;
+   struct semaphore sync_free;
+   struct semaphore loading;
+   bool is_waiting;
+#endif
+
+#ifdef VM
+   struct hash spt;
+   void* esp;
 #endif
 
     /* Owned by thread.c. */
@@ -112,6 +134,7 @@ void thread_init (void);
 void thread_start (void);
 
 /*Implemented*/
+bool less_lock(const struct list_elem *, const struct list_elem *, void *);
 bool less_priority(const struct list_elem *, const struct list_elem *, void *);
 bool less(const struct list_elem *, const struct list_elem *, void *);
 void print_current(void);
