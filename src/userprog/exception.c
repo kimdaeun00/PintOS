@@ -166,13 +166,10 @@ page_fault (struct intr_frame *f)
    if (not_present && is_user_vaddr(fault_addr)){ /* fault address > USER BASE 인 경우로 가정 */
          struct spte* spte = spt_get_spte(fault_addr);
          if(spte){
-            // printf("lol1 :%p\n",spte->upage);
             if(frame_alloc(spte, PAL_USER)!=NULL) 
                return;
          }
          else if(check1 && check2){ //if stack growth required
-            // printf("esp %p, fault addr %p\n",esp,fault_addr);
-            // printf("stack growth\n");
             struct spte* spte = spte_init(pg_round_down(fault_addr),VM_STK_GROW,NULL,0,0,0,true);
             if(frame_alloc(spte,PAL_USER|PAL_ZERO))
                return;
@@ -180,7 +177,6 @@ page_fault (struct intr_frame *f)
       }
 #endif
    if(is_kernel_vaddr(fault_addr)||!user||not_present){
-      // printf("lol3 tid : %d\n",thread_current()->tid);
       exit(-1);
    }
 

@@ -11,7 +11,8 @@ enum vm_status
     VM_STK_GROW,
     VM_SWAP_DISK,
     VM_EXEC_FILE,
-    VM_ON_MEMORY
+    VM_ON_MEMORY,
+    VM_EXIT
  };
 
 

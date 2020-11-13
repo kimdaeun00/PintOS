@@ -51,7 +51,6 @@ void *get_kpage(enum palloc_flags flags){
 struct fte* install_new_fte(void *kpage, struct spte* spte){
     // printf("new fte :  kpage : %p , upage:  %p, spte : %p, thread : %d       count : %d\n",kpage,spte->upage,spte,thread_current()->tid,list_size(&ft));
     lock_acquire(&ft_lock);
-    // printf("install : %p\n",spte);
     struct fte* fte = (struct fte*)malloc(sizeof(struct fte));
     if(!fte){
         lock_release(&ft_lock);
@@ -70,7 +69,6 @@ struct fte* install_new_fte(void *kpage, struct spte* spte){
 struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
     void* kpage = get_kpage(flags);
     struct fte* fte = install_new_fte(kpage,spte);
-    // lock_acquire(&ft_lock);
     if(spte->status == VM_EXEC_FILE){
         fte =  frame_alloc_exec(spte,flags,fte);
     }
@@ -90,9 +88,7 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
 
 struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct fte* fte){
     // printf("frame_alloc_exec %p %p %p\n",fte->t->pagedir,spte->upage, fte->kpage);
-    // printf("f alloc spte : upage: %p, thread : %d\n", spte->upage,fte->t->tid);
     lock_acquire(&ft_lock);
-    // lock_acquire(&sys_lock);
     void* kpage = fte->kpage;
 
     file_seek(spte->file,spte->ofs);
@@ -101,6 +97,7 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
         {
             lock_release(&ft_lock);
             palloc_free_page (kpage);
+            list_remove(fte);
             free(fte);
             return NULL; 
         } 
@@ -109,16 +106,14 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
     
 
     /* Add the page to the process's address space. */
-    // printf("%p\n",kpage);
     if (!pagedir_set_page (fte->t->pagedir, spte->upage, kpage, spte->writable)) 
     {
         lock_release(&ft_lock);
         palloc_free_page (kpage);
-        // lock_release(&sys_lock);
+        list_remove(fte);
         free(fte);
         return NULL; 
     }
-    // lock_release(&sys_lock);
 
     spte->status = VM_ON_MEMORY;
     lock_release(&ft_lock);
@@ -126,10 +121,10 @@ struct fte* frame_alloc_exec(struct spte* spte, enum palloc_flags flags,struct f
 }
 
 struct fte* frame_alloc_swap(struct spte* spte, enum palloc_flags flags,struct fte* fte){
-    // printf("swap_in %p %p \n",spte->upage, fte->kpage);
     lock_acquire(&ft_lock);
     swap_in(spte->swap_index,fte->kpage);
     spte->status = VM_ON_MEMORY;
+    fte->inevictable = false;
     pagedir_set_page(fte->t->pagedir,spte->upage,fte->kpage,spte->writable);
     lock_release(&ft_lock);
     return fte;
@@ -138,11 +133,9 @@ struct fte* frame_alloc_swap(struct spte* spte, enum palloc_flags flags,struct f
 
 void * find_evict(){
     ASSERT(!list_empty(&ft))
-    // ASSERT (lock_held_by_current_thread (&ft_lock));
 
     struct list_elem *e;
     lock_acquire(&ft_lock);
-    // printf("ft size : %d\n",list_size(&ft));
     /* frame table에서 pinned된 애들(read나 write될 애들)은 evict에서 제외시킴 */
     struct fte* temp = NULL;
     int i=0;
@@ -189,22 +182,7 @@ void * find_evict(){
 }
 
 void spt_exit(struct hash spt){
+
     hash_destroy(&spt,spt_hash_destroy);
 }
 
-
-// void set_evict_file(void *buffer, unsigned size, bool inevictable){
-//     unsigned bound = buffer + size;
-//     for(void *temp = pg_round_down(buffer); temp<bound; temp+=PGSIZE){
-//         if(get_user(temp)== -1){
-//             exit(-1);
-//         } 
-//         struct spte * spte = spt_get_spte(temp);
-//         if(!spte){
-//             printf("no spte\n");
-//             exit(-1);
-//         }
-//         struct fte* fte = spte_to_fte(spte);
-//         fte->inevictable = inevictable;
-//     }
-// }

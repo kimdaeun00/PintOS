@@ -13,20 +13,22 @@ unsigned spt_hash_func(const struct hash_elem *temp, void *aux){
 
 void spt_hash_destroy(struct hash_elem *e, void *spt){
     struct spte *spte = hash_entry(e, struct spte, elem);
-    if(spte->status == VM_ON_MEMORY){
+    if(spte->status == VM_ON_MEMORY || spte->status == VM_EXEC_FILE){
       struct fte* fte = spte_to_fte(spte);
       if(fte)
         fte_destroy(fte);
       else{
-        // printf("no fte but exec %p\n",spte);
+        hash_delete(spt,e);
+        free(spte);
         exit(-1);
       }
     }
     else if(spte->status == VM_SWAP_DISK){
       swap_remove(spte->swap_index);
     }
-    // hash_delete(spt,e);
-    free(spte);
+    if(spt != NULL)
+      hash_delete(spt,e);
+    // free(spte);
 
 }
  
@@ -53,7 +55,7 @@ struct spte* spte_init(void * upage, enum vm_status state,struct file *file, uin
     spte->writable = writable;
     spte->swap_index = NULL;
     spte->dirty_bit = false;
-    hash_insert(&thread_current()->spt,&spte->elem);
+    hash_insert(&thread_current()->spt,&spte->elem);\
     return spte;
 }
 
