@@ -55,7 +55,7 @@ struct spte* spte_init(void * upage, enum vm_status state,struct file *file, uin
     spte->writable = writable;
     spte->swap_index = NULL;
     spte->dirty_bit = false;
-    hash_insert(&thread_current()->spt,&spte->elem);\
+    hash_insert(&thread_current()->spt,&spte->elem);
     return spte;
 }
 
@@ -67,3 +67,11 @@ struct spte* spt_get_spte(void *addr){
     free(temp);
     return result;
  } 
+
+void mmape_init(int mapid, void *addr, struct spte* spte){
+    struct mmape* mmape = (struct mmape*)malloc(sizeof(struct mmape));
+    mmape->mapid = mapid;
+    mmape->addr = addr;
+    mmape->spte = spte;
+    list_push_back(&thread_current()->mmap_list,&mmape->elem);
+}

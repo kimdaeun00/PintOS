@@ -193,6 +193,22 @@ syscall_handler(struct intr_frame *f)
     close(*(int *)(esp + 1));
     break;
 
+  case SYS_MMAP:
+    if (!is_userspace(esp, 2))
+    {
+      exit(-1);
+    }
+    f->eax = mmap(*(int *)(esp + 1), (void *)(*(esp + 2)));
+    break;
+  
+  case SYS_MUNMAP:
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    munmap(*(int *)(esp + 1));
+    break;
+
   default:
     break;
   }
@@ -323,8 +339,10 @@ int read(int fd, void *buffer, unsigned size)
     lock_release(&sys_lock);
     return -1;
   }
-  
+
   set_evict_file(buffer,size,true);
+  int count = 0;
+
   result = file_read(file->file, buffer, size);
   set_evict_file(buffer,size,false);
   
@@ -401,6 +419,50 @@ void close(int fd)
   }
 }
 
+int mmap(int fd, void *addr){
+  is_valid_arg(addr);
+  if(fd == 0 || fd == 1){
+    return -1;
+  }
+  if(addr == 0 || addr == NULL){
+    return -1;
+  }
+  if(pg_ofs(addr) != 0){
+    return -1;
+  }
+
+  int mapid = fd;
+
+  struct file_descriptor *file = fd_to_fd(fd);
+  struct file* f;
+  if(file){
+    f = file_reopen(file->file);
+  }
+  off_t offset = 0;
+  void * file_end = addr + file_length(file->file);
+  if(file_end - addr == 0){
+    return -1;
+  }
+  for(void *p = addr; p < file_end; p += PGSIZE){
+    if(spt_get_spte(p)){
+      return -1;
+    }
+    uint32_t read_bytes = PGSIZE;
+    if(p+PGSIZE > file_end){ 
+      read_bytes = file_end - p;
+    }
+    uint32_t zero_bytes = PGSIZE-read_bytes;
+    struct spte* spte = spte_init(p,VM_EXEC_FILE,f, p - addr ,read_bytes,zero_bytes,true); 
+    mmape_init(mapid,p,spte);
+  } 
+  printf("mapid : %d\n",mapid);
+  return mapid;
+}
+
+void munmap(int id){
+  return ;
+}
+
 
 void set_evict_file(void *buffer, unsigned size, bool inevictable){
     unsigned bound = buffer + size;
@@ -417,3 +479,4 @@ void set_evict_file(void *buffer, unsigned size, bool inevictable){
         fte->inevictable = inevictable;
     }
 }
+

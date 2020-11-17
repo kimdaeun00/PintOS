@@ -583,7 +583,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 #ifdef VM
-      // printf("spte_init %p\n",upage);
       if(spte_init(upage,VM_EXEC_FILE,file,ofs,page_read_bytes,page_zero_bytes,writable) == NULL){
         return false;
       }

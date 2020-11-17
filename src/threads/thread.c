@@ -595,6 +595,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->lock_list);
   list_init(&t->fd_list);
   list_init(&t->child_list);
+  list_init(&t->mmap_list);
   sema_init(&t->sync_exit,0);
   sema_init(&t->sync_free,0);
   sema_init(&t->loading,0);

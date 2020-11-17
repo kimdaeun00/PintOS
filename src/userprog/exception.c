@@ -161,7 +161,6 @@ page_fault (struct intr_frame *f)
   check1 = fault_addr == esp - 4 || fault_addr == esp - 32 || esp <= fault_addr;
   check2 = is_user_vaddr(fault_addr) && PHYS_BASE - 0x800000 <= fault_addr;
 #ifdef VM
-   // printf("addr : %p\n",fault_addr);
    
    if (not_present && is_user_vaddr(fault_addr)){ /* fault address > USER BASE 인 경우로 가정 */
          struct spte* spte = spt_get_spte(fault_addr);

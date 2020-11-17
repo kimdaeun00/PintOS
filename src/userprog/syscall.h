@@ -9,7 +9,7 @@
 #include "process.h"
 #include "../devices/input.h"
 
-// extern struct lock *syscall_lock;
+
 struct lock sys_lock;
 
 static int get_user (const uint8_t *);
@@ -29,4 +29,6 @@ unsigned tell(int);
 void close(int);
 void set_evict_file(void *, unsigned , bool);
 
+int mmap(int fd, void *addr);
+void munmap(int id);
 #endif /* userprog/syscall.h */
