@@ -26,7 +26,6 @@ static struct file_descriptor *fd_to_fd(int fd)
   struct file_descriptor *target;
   if (list_empty(fd_list))
     return NULL;
-
   // print_list(fd_list);
   for (e = list_begin(fd_list); e != list_end(fd_list); e = list_next(e))
   {
@@ -274,7 +273,6 @@ int open(const char *file)
   is_valid_arg(file);
   lock_acquire(&sys_lock);
   struct file *open_file = filesys_open(file);
-
   if (open_file == NULL)
   {
     lock_release(&sys_lock);
@@ -430,21 +428,25 @@ int mmap(int fd, void *addr){
   if(pg_ofs(addr) != 0){
     return -1;
   }
-
   int mapid = fd;
 
   struct file_descriptor *file = fd_to_fd(fd);
   struct file* f;
-  if(file){
-    f = file_reopen(file->file);
-  }
+  
+  if(!file)
+    return -1;
+
+  lock_acquire(&sys_lock);
+  f = file_reopen(file->file);
   off_t offset = 0;
   void * file_end = addr + file_length(file->file);
   if(file_end - addr == 0){
+    lock_release(&sys_lock);
     return -1;
   }
   for(void *p = addr; p < file_end; p += PGSIZE){
     if(spt_get_spte(p)){
+      lock_release(&sys_lock);
       return -1;
     }
     uint32_t read_bytes = PGSIZE;
@@ -453,14 +455,54 @@ int mmap(int fd, void *addr){
     }
     uint32_t zero_bytes = PGSIZE-read_bytes;
     struct spte* spte = spte_init(p,VM_EXEC_FILE,f, p - addr ,read_bytes,zero_bytes,true); 
-    mmape_init(mapid,p,spte);
+    mmape_init(mapid,p,addr,f,spte);
   } 
-  printf("mapid : %d\n",mapid);
+  // printf("mapid : %d\n",mapid);
+  lock_release(&sys_lock);
   return mapid;
 }
 
 void munmap(int id){
-  return ;
+  struct list_elem * temp;
+  struct list * mmape_list = &thread_current()->mmap_list;
+  struct thread * cur = thread_current();
+  printf("%s\n",thread_current()->name);
+  struct fte * fte;
+  void * kpage;
+  if(list_empty(mmape_list))
+    return ;
+
+  // lock_acquire(&sys_lock);
+  for (temp = list_front(mmape_list); temp->next!= NULL ; temp = list_next(temp)){ //munmap 진행
+    struct mmape* mmape = list_entry(temp,struct mmape,elem); 
+    if(mmape-> mapid != id){
+      continue;
+    }
+
+    if(mmape->spte->status == VM_SWAP_DISK || mmape->spte->status == VM_EXEC_FILE){
+      fte = frame_alloc(mmape->spte,PAL_USER);
+    }
+    
+    if(mmape->spte->status == VM_ON_MEMORY){
+      if(pagedir_is_dirty(thread_current()->pagedir, mmape->spte->upage)){
+        uint32_t offset = mmape->addr - mmape->file_addr;
+        uint32_t size = PGSIZE;
+        if(offset + PGSIZE > file_length(mmape->file)){
+          size = file_length(mmape->file) - offset;
+        }
+        printf("%s\n",mmape->spte->upage);
+        file_write_at(mmape->file, mmape-> spte->upage, size , offset);
+        pagedir_clear_page(cur->pagedir,mmape->addr);
+      }
+    }
+
+    hash_delete(&cur->spt,&mmape->spte->elem);
+    free(mmape->spte);
+    pagedir_clear_page(cur->pagedir,mmape->addr);
+    list_remove(&mmape->elem);
+  }
+  // lock_release(&sys_lock);
+
 }
 
 

@@ -6,6 +6,7 @@
 #include "filesys/file.h"
 #include "vm/frame.h"
 #include "vm/swap.h"
+#include "userprog/syscall.h"
 
 unsigned spt_hash_func(const struct hash_elem *temp, void *aux){
      return hash_int((int)hash_entry(temp, struct spte, elem) -> upage);
@@ -68,10 +69,27 @@ struct spte* spt_get_spte(void *addr){
     return result;
  } 
 
-void mmape_init(int mapid, void *addr, struct spte* spte){
+void mmape_init(int mapid, void *addr, void * file_addr, struct file* file,struct spte* spte){
     struct mmape* mmape = (struct mmape*)malloc(sizeof(struct mmape));
     mmape->mapid = mapid;
     mmape->addr = addr;
+    mmape->file_addr = file_addr;
+    mmape->file = file;
     mmape->spte = spte;
     list_push_back(&thread_current()->mmap_list,&mmape->elem);
+}
+
+void mmape_exit(struct list * mmap_list){
+  struct list_elem *temp;
+  struct mmape * mmape;
+  if(list_empty(mmap_list))
+  {
+    return;
+  }
+  for(temp = list_front(mmap_list);temp->next != NULL; temp = list_next(temp)){
+    mmape = list_entry(temp,struct mmape, elem);
+    munmap(mmape->mapid);
+    free(mmape);
+    list_remove(temp);
+  }
 }

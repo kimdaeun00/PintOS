@@ -19,6 +19,8 @@ enum vm_status
 struct mmape{
     int mapid;
     void * addr;
+    void * file_addr;
+    struct file* file;
     struct spte* spte;
     struct list_elem elem;
 };
@@ -42,6 +44,7 @@ unsigned spt_hash_func(const struct hash_elem *, void *);
 bool spt_less(const struct hash_elem *, const struct hash_elem *, void *);
 struct spte* spte_init(void * , enum vm_status,struct file *, uint32_t, uint32_t , uint32_t , bool );
 struct spte* spt_get_spte(void *);
-void mmape_init(int, void *, struct spte* );
+void mmape_init(int, void *, void *, struct file * , struct spte* );
+void mmape_exit(struct list * );
 
 #endif

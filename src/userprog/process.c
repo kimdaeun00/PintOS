@@ -261,6 +261,7 @@ process_exit (void)
      to the kernel-only page directory. */
   sema_up(&cur->sync_exit);
   sema_down(&cur->sync_free);
+  mmape_exit(&cur->mmap_list);
   spt_exit(cur->spt);
   pd = cur->pagedir;
   // printf("destroy pagedir : %p\n",cur->pagedir);
@@ -279,9 +280,9 @@ process_exit (void)
     } 
   struct list_elem *e;
   struct file_descriptor *temp;
-
-  for(e=list_begin(&cur->fd_list) ;e->next !=NULL ;){
+  for(e=list_begin(&cur->fd_list) ;e->next !=NULL ; e = list_next(e)){
     temp = list_entry(e,struct file_descriptor,elem);
+    // munmap(temp->fd);
     file_close(temp->file);
     e = list_remove(&temp->elem);
     free(temp);
