@@ -23,6 +23,8 @@ void ft_init(void){
 
 struct fte* spte_to_fte(struct spte* spte){
     struct list_elem *e;
+    if(list_empty(&ft))
+        return NULL; 
     for(e=list_front(&ft);e->next != NULL;e=list_next(e)){
         struct fte* fte = list_entry(e,struct fte,elem);
         if(fte->spte == spte){

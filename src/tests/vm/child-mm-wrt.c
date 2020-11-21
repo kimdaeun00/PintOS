@@ -14,11 +14,14 @@
 void
 test_main (void)
 {
-  int handle;
+  int handle,id;
+  char buf[1024];
 
   CHECK (create ("sample.txt", sizeof sample), "create \"sample.txt\"");
   CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
-  CHECK (mmap (handle, ACTUAL) != MAP_FAILED, "mmap \"sample.txt\"");
+  CHECK ((id = mmap (handle, ACTUAL)) != MAP_FAILED, "mmap \"sample.txt\"");
   memcpy (ACTUAL, sample, sizeof sample);
+  // munmap(id);
+
 }
 

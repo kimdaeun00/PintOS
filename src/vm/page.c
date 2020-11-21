@@ -89,7 +89,6 @@ void mmape_exit(struct list * mmap_list){
   for(temp = list_front(mmap_list);temp->next != NULL; temp = list_next(temp)){
     mmape = list_entry(temp,struct mmape, elem);
     munmap(mmape->mapid);
-    free(mmape);
-    list_remove(temp);
+    // free(mmape);
   }
 }

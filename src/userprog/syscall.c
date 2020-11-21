@@ -297,6 +297,7 @@ int open(const char *file)
   struct file_descriptor *fd = (struct file_descriptor *)malloc(sizeof(struct file_descriptor));
   fd->fd = new_fd;
   fd->file = open_file;
+  // printf("open %p\n",fd->file);
   memcpy(&(fd->elem),e,sizeof(struct list_elem));
   free(e);
   
@@ -429,6 +430,7 @@ int mmap(int fd, void *addr){
     return -1;
   }
   int mapid = fd;
+  
 
   struct file_descriptor *file = fd_to_fd(fd);
   struct file* f;
@@ -438,6 +440,7 @@ int mmap(int fd, void *addr){
 
   lock_acquire(&sys_lock);
   f = file_reopen(file->file);
+  // f = file->file;
   off_t offset = 0;
   void * file_end = addr + file_length(file->file);
   if(file_end - addr == 0){
@@ -445,7 +448,7 @@ int mmap(int fd, void *addr){
     return -1;
   }
   for(void *p = addr; p < file_end; p += PGSIZE){
-    if(spt_get_spte(p)){
+    if(spt_get_spte(p)){  // 이미 p를 upage로 갖는 spte가 있으면 return -1
       lock_release(&sys_lock);
       return -1;
     }
@@ -462,46 +465,48 @@ int mmap(int fd, void *addr){
   return mapid;
 }
 
+
 void munmap(int id){
   struct list_elem * temp;
   struct list * mmape_list = &thread_current()->mmap_list;
   struct thread * cur = thread_current();
-  printf("%s\n",thread_current()->name);
   struct fte * fte;
   void * kpage;
   if(list_empty(mmape_list))
-    return ;
-
-  // lock_acquire(&sys_lock);
+    return;
+  lock_acquire(&sys_lock);
   for (temp = list_front(mmape_list); temp->next!= NULL ; temp = list_next(temp)){ //munmap 진행
     struct mmape* mmape = list_entry(temp,struct mmape,elem); 
     if(mmape-> mapid != id){
       continue;
     }
-
     if(mmape->spte->status == VM_SWAP_DISK || mmape->spte->status == VM_EXEC_FILE){
       fte = frame_alloc(mmape->spte,PAL_USER);
     }
-    
+
     if(mmape->spte->status == VM_ON_MEMORY){
+      fte = spte_to_fte(mmape->spte);
+      fte->inevictable = true;
       if(pagedir_is_dirty(thread_current()->pagedir, mmape->spte->upage)){
         uint32_t offset = mmape->addr - mmape->file_addr;
         uint32_t size = PGSIZE;
         if(offset + PGSIZE > file_length(mmape->file)){
           size = file_length(mmape->file) - offset;
         }
-        printf("%s\n",mmape->spte->upage);
+        // printf("exit unmap %s\n",thread_current()->name);
         file_write_at(mmape->file, mmape-> spte->upage, size , offset);
-        pagedir_clear_page(cur->pagedir,mmape->addr);
       }
-    }
 
-    hash_delete(&cur->spt,&mmape->spte->elem);
-    free(mmape->spte);
     pagedir_clear_page(cur->pagedir,mmape->addr);
+    }
+    
+    hash_delete(&cur->spt,&mmape->spte->elem);
+    fte->inevictable = false;
+    list_remove(&fte->elem);
+    free(mmape->spte);
     list_remove(&mmape->elem);
   }
-  // lock_release(&sys_lock);
+  lock_release(&sys_lock);
 
 }
 
