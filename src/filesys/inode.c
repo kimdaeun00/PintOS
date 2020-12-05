@@ -134,30 +134,38 @@ size_t inode_alloc_indirect(block_sector_t * sectors, size_t size){
   cache_write(fs_device,*sectors,indirect_block);
   return cnt;
 }
+
+
 size_t inode_alloc_double(block_sector_t * sectors, size_t size){
   static char empty[BLOCK_SECTOR_SIZE] = {0,};
   struct indirect_block *doubly_blocks= (struct indirect_block*) malloc(sizeof(struct indirect_block)); 
   size_t cnt = size;
   if(*sectors == 0){ 
-    if(!free_map_allocate(1,sectors)){
-      return size;
-    }
+    // if(!free_map_allocate(1,sectors)){
+    //   return size;
+    // }
+    free_map_allocate(1,sectors);
     cache_write(fs_device,*sectors,empty);
   }
   cache_read(fs_device,*sectors,doubly_blocks);
 
-  //1st level allocation
-  for(int i =0 ; i<SECTOR_CNT; i ++){
-    if(!doubly_blocks->sectors[i]){
-      if (!free_map_allocate (1,&doubly_blocks->sectors[i]))
-        return size - cnt;
-      cache_write(fs_device,doubly_blocks->sectors[i],empty);
-    }
-  }
+  // //1st level allocation
+  // for(int i =0 ; i<SECTOR_CNT; i ++){
+  //   if(!doubly_blocks->sectors[i]){
+  //     // if (!free_map_allocate (1,&doubly_blocks->sectors[i]))
+  //       // return size - cnt;
+  //     free_map_allocate (1,&doubly_blocks->sectors[i]);
+  //     cache_write(fs_device,doubly_blocks->sectors[i],empty);
+  //   }
+  // }
   
   //second level allocation
   for(int i=0; i<SECTOR_CNT ; i++){
-    cnt -= inode_alloc_indirect(doubly_blocks->sectors[i],cnt);
+    cnt -= inode_alloc_indirect(&doubly_blocks->sectors[i],cnt);
+    if(cnt == 0){
+      // printf("!\n");
+      break;
+    }
   }
 
   cache_write(fs_device,*sectors,doubly_blocks);
@@ -176,7 +184,7 @@ size_t inode_alloc(struct inode_disk* disk, size_t sectors){
   if(cnt ==0)
     return sectors;
   //doubly indirect
-  cnt -= inode_alloc_double(disk->double_indirect_sector,cnt);
+  cnt -= inode_alloc_double(&disk->double_indirect_sector,cnt);
 
   ASSERT(cnt == 0);
   return sectors - cnt;
@@ -423,7 +431,13 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     return 0;
 
   //extend file
-  
+  off_t extend =  offset + size - inode->data.length;
+  if(extend > 0){ 
+    size_t sectors = bytes_to_sectors(extend);
+    inode_alloc(&inode->data,sectors);
+    inode->data.length += extend;
+    cache_write(fs_device,inode->sector,&inode->data);
+  }
 
   while (size > 0) 
     {

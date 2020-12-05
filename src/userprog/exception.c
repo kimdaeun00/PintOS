@@ -176,6 +176,7 @@ page_fault (struct intr_frame *f)
       }
 #endif
    if(is_kernel_vaddr(fault_addr)||!user||not_present){
+      // printf("page fault\n");
       exit(-1);
    }
 
