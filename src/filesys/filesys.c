@@ -6,6 +6,7 @@
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
 #include "filesys/directory.h"
+#include "filesys/cache.h"
 
 /* Partition that contains the file system. */
 struct block *fs_device;
@@ -23,6 +24,7 @@ filesys_init (bool format)
 
   inode_init ();
   free_map_init ();
+  cache_init();
 
   if (format) 
     do_format ();
@@ -36,6 +38,7 @@ void
 filesys_done (void) 
 {
   free_map_close ();
+  cache_exit();
 }
 
 /* Creates a file named NAME with the given INITIAL_SIZE.
@@ -54,7 +57,6 @@ filesys_create (const char *name, off_t initial_size)
   if (!success && inode_sector != 0) 
     free_map_release (inode_sector, 1);
   dir_close (dir);
-
   return success;
 }
 

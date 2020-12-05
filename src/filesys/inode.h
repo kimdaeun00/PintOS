@@ -6,8 +6,20 @@
 #include "devices/block.h"
 
 struct bitmap;
+struct inode_disk;
 
 void inode_init (void);
+/* added */
+block_sector_t find_block(const struct inode_disk*, size_t);
+size_t iterate_alloc(block_sector_t *, off_t, size_t);
+size_t inode_alloc_indirect(block_sector_t *, size_t);
+size_t inode_alloc_double(block_sector_t *, size_t);
+size_t inode_alloc(struct inode_disk*, size_t);
+void inode_free(struct inode_disk*);
+size_t iterate_free(block_sector_t *, off_t, size_t);
+size_t inode_free_indirect(block_sector_t*, size_t);
+size_t inode_free_double(block_sector_t*, size_t);
+
 bool inode_create (block_sector_t, off_t);
 struct inode *inode_open (block_sector_t);
 struct inode *inode_reopen (struct inode *);
