@@ -121,6 +121,8 @@ struct thread
    void* esp;
    struct list mmap_list;
 #endif
+   struct thread *parent;
+   struct dir *dir;
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

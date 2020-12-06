@@ -10,6 +10,7 @@
 #include "vm/page.h"
 #include "vm/frame.h"
 #include "vm/swap.h"
+#include "filesys/directory.h"
 
 static int
 get_user (const uint8_t *uaddr) {
@@ -257,7 +258,7 @@ bool create(const char *file, unsigned initial_size)
 
 bool remove(const char *file)
 {
-  is_valid_arg(file);
+  is_valid_arg(file); 
   lock_acquire(&sys_lock);
   bool result = filesys_remove(file);
   lock_release(&sys_lock);
@@ -297,7 +298,7 @@ int open(const char *file)
   struct file_descriptor *fd = (struct file_descriptor *)malloc(sizeof(struct file_descriptor));
   fd->fd = new_fd;
   fd->file = open_file;
-  // printf("open %p\n",fd->file);
+  fd->dir = dir_open(file_reopen(file_get_inode(open_file)));
   memcpy(&(fd->elem),e,sizeof(struct list_elem));
   free(e);
   

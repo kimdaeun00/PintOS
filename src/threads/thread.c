@@ -13,6 +13,8 @@
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "filesys/directory.h"
+#include "filesys/inode.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -601,6 +603,8 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init(&t->loading,0);
   t->is_waiting = false;
   t->esp = PHYS_BASE;
+  t->parent =  running_thread();
+  
   list_push_back(&running_thread()->child_list,&t->child_elem);
 
   t->exit_status = -1;
