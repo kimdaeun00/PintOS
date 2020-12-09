@@ -5,6 +5,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
 
 /* A directory. */
 struct dir 
@@ -26,7 +27,17 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  bool success = inode_create (sector, entry_cnt * sizeof (struct dir_entry),1);
+  if(!success){
+    return success;
+  }
+  struct inode* default_inode = inode_open(sector);
+  struct dir * dir = dir_open(default_inode);
+  struct dir_entry e;
+  e.inode_sector = sector;
+  success = (inode_write_at(dir->inode,&e,sizeof(struct dir_entry),0) == sizeof(struct dir_entry));
+  dir_close(dir);
+  return success;
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -38,7 +49,7 @@ dir_open (struct inode *inode)
   if (inode != NULL && dir != NULL)
     {
       dir->inode = inode;
-      dir->pos = 0;
+      dir->pos = sizeof(struct dir_entry);
       return dir;
     }
   else
@@ -98,7 +109,7 @@ lookup (const struct dir *dir, const char *name,
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
-  for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
+  for (ofs = sizeof(e); inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
        ofs += sizeof e) 
     if (e.in_use && !strcmp (name, e.name)) 
       {
@@ -120,15 +131,22 @@ dir_lookup (const struct dir *dir, const char *name,
             struct inode **inode) 
 {
   struct dir_entry e;
-
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
 
-  if (lookup (dir, name, &e, NULL))
+  if (strcmp(name, ".")==0){ //current
+    *inode = inode_reopen(dir->inode);
+  }
+  if (strcmp(name, "..")==0){ //parent
+    inode_read_at(dir->inode,&e,sizeof(e),0);
+    * inode = inode_open(e.inode_sector);
+  }
+  if (lookup (dir, name, &e, NULL)){
     *inode = inode_open (e.inode_sector);
-  else
+  }
+  else{
     *inode = NULL;
-
+  }
   return *inode != NULL;
 }
 
@@ -139,9 +157,10 @@ dir_lookup (const struct dir *dir, const char *name,
    Fails if NAME is invalid (i.e. too long) or a disk or memory
    error occurs. */
 bool
-dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
+dir_add (struct dir *dir, const char *name, block_sector_t inode_sector, int is_dir)
 {
   struct dir_entry e;
+  struct dir * subdir;
   off_t ofs;
   bool success = false;
 
@@ -155,6 +174,21 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
   if (lookup (dir, name, NULL, NULL)){
     goto done;
   }
+
+  if(is_dir){
+    //get parent
+    e.inode_sector = inode_get_inumber(dir_get_inode(dir));
+    //get subdir
+    subdir = dir_open(inode_open(inode_sector));
+    if(subdir == NULL)
+      return false;
+    
+    size_t size = inode_write_at(subdir->inode, &e, sizeof(e),0); 
+    dir_close(subdir);
+    if(size != sizeof(e))
+      return false;
+  }
+
 
   /* Set OFS to offset of free slot.
      If there are no free slots, then it will be set to the
@@ -191,7 +225,6 @@ dir_remove (struct dir *dir, const char *name)
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
-
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))
     goto done;
@@ -200,7 +233,27 @@ dir_remove (struct dir *dir, const char *name)
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
     goto done;
-
+  if(inode_is_dir(inode)){
+    bool is_empty = true;
+    struct dir * subdir = dir_open(inode); //similar to readdir
+    off_t temp= sizeof(e);
+    
+    while (inode_read_at (subdir->inode, &e, sizeof e, temp) == sizeof e) 
+      {
+        temp += sizeof e;
+        if (e.in_use)
+          {
+            is_empty = false;
+          } 
+      }
+    if(!is_empty){
+      // printf("not empty\n");
+      dir_close(subdir);
+      goto done;
+    }
+    // printf("empty\n");
+    dir_close(subdir);
+  }
   /* Erase directory entry. */
   e.in_use = false;
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 

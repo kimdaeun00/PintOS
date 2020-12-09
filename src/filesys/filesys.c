@@ -2,6 +2,7 @@
 #include <debug.h>
 #include <stdio.h>
 #include <string.h>
+#include "threads/thread.h"
 #include "filesys/file.h"
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
@@ -46,14 +47,21 @@ filesys_done (void)
    Fails if a file named NAME already exists,
    or if internal memory allocation fails. */
 bool
-filesys_create (const char *name, off_t initial_size) 
+filesys_create (const char *name, off_t initial_size, int is_dir) 
 {
   block_sector_t inode_sector = 0;
-  struct dir *dir = dir_open_root ();
+  // printf("1\n");
+  char * filename = (char*)calloc(1,128);
+  char * dirname = (char*)calloc(1,128);
+  split_name(name, filename, dirname);
+  // printf("2\n");
+  // printf("create ; %s : %s\n",dirname,filename);
+  struct dir* dir = open_directories(dirname);
+  // printf("create : %p\n", dir);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
-                  && inode_create (inode_sector, initial_size)
-                  && dir_add (dir, name, inode_sector));
+                  && inode_create (inode_sector, initial_size,is_dir)
+                  && dir_add (dir, filename, inode_sector, is_dir)); 
   if (!success && inode_sector != 0) 
     free_map_release (inode_sector, 1);
   dir_close (dir);
@@ -68,10 +76,18 @@ filesys_create (const char *name, off_t initial_size)
 struct file *
 filesys_open (const char *name)
 {
-  struct dir *dir = dir_open_root ();
+  char * filename = (char*)calloc(1,128);
+  char * dirname = (char*)calloc(1,128);
   struct inode *inode = NULL;
-  if (dir != NULL)
-    dir_lookup (dir, name, &inode);
+  split_name(name, filename, dirname);
+  // printf("filename : %s, dirname : %s\n",filename,dirname);
+  struct dir* dir = open_directories(dirname);
+  if(dir!=NULL){
+    dir_lookup (dir, filename, &inode);
+  }
+  if(strlen(filename)==0){
+    inode = dir_get_inode(dir);
+  }
   dir_close (dir);
   return file_open (inode);
 }
@@ -83,8 +99,12 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
-  struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
+  char * filename = (char*)calloc(1,128);
+  char * dirname = (char*)calloc(1,128);
+  split_name(name, filename, dirname);
+  struct dir* dir = open_directories(dirname);
+  
+  bool success = dir != NULL && dir_remove (dir, filename);
   dir_close (dir); 
 
   return success;
@@ -100,4 +120,94 @@ do_format (void)
     PANIC ("root directory creation failed");
   free_map_close ();
   printf ("done.\n");
+}
+
+
+void split_name(char* name, char* filename, char* dirname){
+  int i;
+  for(i=strlen(name)-1;i>=0;i--){
+    if(name[i]=='/')
+      break;
+    }
+  if(i==-1){ // name에 '/'이 없을 때 : filename만 들어올 때 
+    strlcpy(filename,name,strlen(name)+1);
+    return;
+  }
+
+  // if(i==0){
+  //   memcpy(dirname,");
+  //   // dirname[1] = "\0";
+  // }
+  // else{
+  strlcpy(dirname,name,i+2);
+  // }
+
+  if(i!=strlen(name)-1){  // '/'뒷부분은 filename
+    strlcpy(filename,name+i+1,strlen(name)-i);
+  }
+  return NULL;
+}
+
+
+/* 아직 split안된 dirname을 하나하나 열기 */
+struct dir * open_directories(char* dirname){
+  char *token, save_ptr;
+  char * temp = (char*)calloc(1,128);
+  strlcpy(temp,dirname,strlen(dirname)+1);
+  struct dir* abs_dir = NULL;
+  struct dir* temp_dir = NULL;
+
+  if(strlen(dirname)==0){ //file name만 들어왔으면 현재 directory return
+    // return dir_open_root;
+    if(thread_current()->dir != NULL){
+      // printf(" cur dir : %p\n", thread_current()->dir);
+      abs_dir = dir_reopen(thread_current()->dir);
+      // printf(" absdir : %p\n", abs_dir);
+      return abs_dir;
+    }
+    abs_dir = dir_open_root();
+    // printf("root : %p\n",abs_dir);
+    return abs_dir;
+  }
+
+  if(temp[0] == '/'){ // absolute path
+    abs_dir = dir_open_root();
+    // printf("%p\n",abs_dir);
+  }
+  else if(thread_current()->dir == NULL){ // current thread is main
+    abs_dir = dir_open_root();
+  }
+  else{
+    abs_dir = dir_reopen(thread_current()->dir);
+  }
+
+  int i =0;
+  //dirname을 /로 나눠가면서 dir_open하기 
+  for (token = strtok_r (temp, "/", &save_ptr); token != NULL;
+        token = strtok_r (NULL, "/", &save_ptr))
+    {
+      if(i++ !=0 && strlen(token)==0){
+        continue;
+      }
+      struct inode* temp_inode = NULL;
+      bool temp_bool = dir_lookup(abs_dir,token,&temp_inode);
+      if(!temp_bool){
+        // printf("not found : %s\n",token);
+        dir_close(abs_dir); 
+        return NULL; //존재하지 않는 directory의 경우 return null
+      }
+      else{
+        temp_dir = dir_open(temp_inode);
+        if(temp_dir == NULL){
+            dir_close(abs_dir);
+            return NULL;
+        }
+        // abs_dir = dir_open(temp_inode);
+        dir_close(abs_dir);
+        abs_dir = temp_dir;
+        
+      }
+    }
+  free(temp);
+  return abs_dir;
 }

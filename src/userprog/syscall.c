@@ -11,6 +11,10 @@
 #include "vm/frame.h"
 #include "vm/swap.h"
 #include "filesys/directory.h"
+#include "filesys/inode.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "filesys/inode.h"
 
 static int
 get_user (const uint8_t *uaddr) {
@@ -209,6 +213,46 @@ syscall_handler(struct intr_frame *f)
     munmap(*(int *)(esp + 1));
     break;
 
+  case SYS_CHDIR:
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    f->eax = chdir((const char *)(*(esp + 1)));
+    break;
+
+  case SYS_MKDIR:
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    f->eax = mkdir((const char *)(*(esp + 1)));
+    break;
+
+  case SYS_READDIR:
+    if (!is_userspace(esp, 2))
+    {
+      exit(-1);
+    }
+    f->eax = readdir(*(int *)(esp + 1), (char *)(*(esp + 2)));
+    break;
+
+  case SYS_ISDIR:
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    f->eax = isdir(*(int *)(esp + 1));
+    break;
+
+  case SYS_INUMBER:
+    if (!is_userspace(esp, 1))
+    {
+      exit(-1);
+    }
+    f->eax = inumber(*(int *)(esp + 1));
+    break; 
+           
   default:
     break;
   }
@@ -251,7 +295,7 @@ bool create(const char *file, unsigned initial_size)
   }
   is_valid_arg(file);
   lock_acquire(&sys_lock);
-  result = filesys_create(file, initial_size);
+  result = filesys_create(file, initial_size,0);
   lock_release(&sys_lock);
   return result;
 }
@@ -298,13 +342,15 @@ int open(const char *file)
   struct file_descriptor *fd = (struct file_descriptor *)malloc(sizeof(struct file_descriptor));
   fd->fd = new_fd;
   fd->file = open_file;
-  fd->dir = dir_open(file_reopen(file_get_inode(open_file)));
+  fd->dir = NULL;
+  if(file_is_dir(open_file)){
+    fd->dir = dir_open(inode_reopen(file_get_inode(open_file)));
+  }
   memcpy(&(fd->elem),e,sizeof(struct list_elem));
   free(e);
   
   list_push_back(&thread_current()->fd_list, &fd->elem);
   lock_release(&sys_lock);
-
   return new_fd;
 }
 
@@ -367,6 +413,10 @@ int write(int fd, const void *buffer, unsigned size)
     struct file_descriptor *file = fd_to_fd(fd);
     if (file == NULL)
     {
+      lock_release(&sys_lock);
+      return -1;
+    }
+    if(file_is_dir(file->file)){
       lock_release(&sys_lock);
       return -1;
     }
@@ -508,6 +558,60 @@ void munmap(int id){
     list_remove(&mmape->elem);
   }
   lock_release(&sys_lock);
+}
+
+bool chdir(const char *dir){
+  lock_acquire(&sys_lock);
+  
+  struct dir* new_dir = open_directories(dir);
+  bool success = new_dir!=NULL;
+  if(success){
+    dir_close(thread_current()->dir);
+    thread_current()->dir = new_dir;
+    // printf("%p\n",new_dir);
+  }
+  lock_release(&sys_lock);
+  return success;
+}
+
+bool mkdir(const char *dir){
+  lock_acquire(&sys_lock);
+  bool result = filesys_create(dir,0,1);
+  lock_release(&sys_lock);
+  return result;
+}
+
+bool readdir(int fd, char* name){
+  lock_acquire(&sys_lock);
+  struct file_descriptor * file = fd_to_fd(fd);
+  if(file == NULL){
+    lock_release(&sys_lock);  
+    return false;
+  }
+  bool result = false;
+  if(file_is_dir(file->file)){
+    result = dir_readdir(file->dir,name);
+  }
+  lock_release(&sys_lock);  
+  return result;
+}
+
+bool isdir(int fd){
+  lock_acquire(&sys_lock);
+  struct file* file = fd_to_fd(fd)->file;
+  lock_release(&sys_lock);
+  return file_is_dir(file);
+}
+
+int inumber(int fd){
+  lock_acquire(&sys_lock);
+  struct file_descriptor * file = fd_to_fd(fd);
+  if(file == NULL){
+      lock_release(&sys_lock);
+      return -1;
+  }
+  lock_release(&sys_lock);
+  return inode_to_inum(file->file);
 
 }
 

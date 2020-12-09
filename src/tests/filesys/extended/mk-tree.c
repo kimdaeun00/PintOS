@@ -27,7 +27,7 @@ make_tree (int at, int bt, int ct, int dt)
           for (c = 0; c < ct; c++) 
             {
               do_mkdir ("/%d/%d/%d", a, b, c);
-              for (d = 0; d < dt; d++)
+              for (d = 0; d < dt; d++){}
                 do_touch ("/%d/%d/%d/%d", a, b, c, d);
             }
         }

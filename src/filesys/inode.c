@@ -8,11 +8,12 @@
 #include "threads/malloc.h"
 #include "filesys/cache.h"
 #include "threads/thread.h"
+#include "filesys/file.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 #define SECTOR_CNT BLOCK_SECTOR_SIZE/4
-#define DIRECT_CNT SECTOR_CNT - 4
+#define DIRECT_CNT SECTOR_CNT - 5
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
@@ -21,6 +22,7 @@ struct inode_disk
     block_sector_t indirect_sector;
     block_sector_t double_indirect_sector;
     off_t length;                       /* File size in bytes. */
+    int is_dir;
     unsigned magic;                     /* Magic number. */
   };
 
@@ -255,7 +257,7 @@ void inode_free(struct inode_disk* disk){
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length)
+inode_create (block_sector_t sector, off_t length,int dir)
 {
   struct inode_disk *disk_inode = NULL;
   bool success = false;
@@ -269,6 +271,7 @@ inode_create (block_sector_t sector, off_t length)
       size_t sectors = bytes_to_sectors (length);
       disk_inode->length = length;
       disk_inode->magic = INODE_MAGIC;
+      disk_inode->is_dir = dir;
       size_t alloc_sector = inode_alloc(disk_inode,sectors);
       if(alloc_sector == sectors){
         cache_write (fs_device, sector, disk_inode);
@@ -430,6 +433,9 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   uint8_t *bounce = NULL;
   if (inode->deny_write_cnt)
     return 0;
+  
+  // if(inode->data.is_dir)
+  //   return -1;
 
   //extend file
   off_t extend =  offset + size - inode->data.length;
@@ -516,4 +522,23 @@ off_t
 inode_length (const struct inode *inode)
 {
   return inode->data.length;
+}
+
+bool file_is_dir(struct file *file){
+  struct inode * inode = file_get_inode(file);
+  if(inode->data.is_dir)
+    return true;
+  else
+    return false;
+}
+
+bool inode_is_dir(struct inode * inode){
+  if(inode->data.is_dir)
+    return true;
+  else
+    return false;
+}
+
+block_sector_t inode_to_inum(struct file* file){
+  return file_get_inode(file)->sector;
 }

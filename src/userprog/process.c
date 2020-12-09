@@ -139,7 +139,6 @@ process_execute (const char *file_name)
   char ** argv = (char**)malloc(argc * sizeof(char *));
   get_argv((char *)file_name,argv)[0];
   thread_name = argv[0];
-
   /* Create a new thread to execute FILE_NAME. */
   if(filesys_open(thread_name)==NULL){
     return -1;

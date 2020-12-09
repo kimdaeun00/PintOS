@@ -31,4 +31,10 @@ void set_evict_file(void *, unsigned , bool);
 
 int mmap(int fd, void *addr);
 void munmap(int id);
+
+bool chdir(const char *);
+bool mkdir(const char *);
+bool readdir(int, char *);
+bool isdir(int);
+int inumber(int);
 #endif /* userprog/syscall.h */
