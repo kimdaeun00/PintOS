@@ -137,11 +137,11 @@ dir_lookup (const struct dir *dir, const char *name,
   if (strcmp(name, ".")==0){ //current
     *inode = inode_reopen(dir->inode);
   }
-  if (strcmp(name, "..")==0){ //parent
+  else if (strcmp(name, "..")==0){ //parent
     inode_read_at(dir->inode,&e,sizeof(e),0);
     * inode = inode_open(e.inode_sector);
   }
-  if (lookup (dir, name, &e, NULL)){
+  else if (lookup (dir, name, &e, NULL)){
     *inode = inode_open (e.inode_sector);
   }
   else{
@@ -236,6 +236,20 @@ dir_remove (struct dir *dir, const char *name)
   if(inode_is_dir(inode)){
     bool is_empty = true;
     struct dir * subdir = dir_open(inode); //similar to readdir
+
+    // not allow to rm swd
+    if(thread_current()->dir != NULL && inode_get_inumber(inode) == inode_get_inumber(dir_get_inode(thread_current()->dir))){
+      dir_close(subdir);
+      goto done;
+    } 
+    
+    //if opened by process
+    if(thread_current()->dir != NULL && inode_is_open(dir->inode)){
+      dir_close(subdir);
+      goto done;
+    }
+
+
     off_t temp= sizeof(e);
     
     while (inode_read_at (subdir->inode, &e, sizeof e, temp) == sizeof e) 

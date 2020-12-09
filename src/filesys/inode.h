@@ -36,5 +36,6 @@ off_t inode_length (const struct inode *);
 bool file_is_dir(struct file*);
 bool inode_is_dir(struct inode*);
 block_sector_t inode_to_inum(struct file*);
+bool inode_is_open(struct inode* );
 
 #endif /* filesys/inode.h */

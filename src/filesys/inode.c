@@ -542,3 +542,14 @@ bool inode_is_dir(struct inode * inode){
 block_sector_t inode_to_inum(struct file* file){
   return file_get_inode(file)->sector;
 }
+
+bool inode_is_open(struct inode* inode){
+  struct list_elem *e;
+
+  for(e= list_front(&open_inodes);e->next != NULL; e = list_next(e)){
+    struct inode * temp = list_entry(e, struct inode, elem);
+    if(inode->sector == temp->sector)
+      return true;
+  }
+  return false; 
+}
