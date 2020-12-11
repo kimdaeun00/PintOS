@@ -49,26 +49,31 @@ filesys_done (void)
 bool
 filesys_create (const char *name, off_t initial_size, int is_dir) 
 {
+  // printf("create : %s\n",name);
   block_sector_t inode_sector = 0;
-  // printf("1\n");
   char * filename = (char*)calloc(1,128);
   char * dirname = (char*)calloc(1,128);
   split_name(name, filename, dirname);
-  if(strlen(filename)>14)
+  if(strlen(filename)>14){
+    free(filename);
+    free(dirname);
     return false;
+  }
   // printf("2\n");
   // printf("create ; dirname %s : filename %s\n",dirname,filename);
+  // printf("open_dir : %s\n",dirname);
   struct dir* dir = open_directories(dirname);
   // printf("create : %p\n", dir);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size,is_dir)
                   && dir_add (dir, filename, inode_sector, is_dir)); 
-  if(success)
-    printf("create success : %s\n",name);
-  if (!success && inode_sector != 0) 
+  if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
   dir_close (dir);
+
+  free(filename);
+  free(dirname);
   return success;
 }
 
@@ -80,11 +85,15 @@ filesys_create (const char *name, off_t initial_size, int is_dir)
 struct file *
 filesys_open (const char *name)
 {
+  // printf("open : %s\n",name);
   char * filename = (char*)calloc(1,128);
   char * dirname = (char*)calloc(1,128);
   struct inode *inode = NULL;
-  if(strlen(name)==0)
+  if(strlen(name)==0){
+    free(filename);
+    free(dirname);  
     return NULL;
+  }
   split_name(name, filename, dirname);
   // printf("open dirname : %s, filename : %s\n",dirname, filename);
   struct dir* dir = open_directories(dirname);
@@ -95,6 +104,9 @@ filesys_open (const char *name)
     inode = dir_get_inode(dir);
   }
   dir_close (dir);
+  free(filename);
+  free(dirname);
+  // printf("open success : %s\n",name);
   return file_open (inode);
 }
 
@@ -109,10 +121,17 @@ filesys_remove (const char *name)
   char * dirname = (char*)calloc(1,128);
   split_name(name, filename, dirname);
   struct dir* dir = open_directories(dirname);
-  
-  bool success = dir != NULL && dir_remove (dir, filename);
-  dir_close (dir); 
+  if(dir == NULL)
+    return false;
 
+  bool success = dir_remove(dir,filename);
+  dir_close (dir); 
+  free(filename);
+  free(dirname);
+  // if(success)
+  //   printf("remove success : %s\n",name);
+  // else
+  //   printf("remove failed : %s\n",name);
   return success;
 }
 

@@ -562,7 +562,6 @@ void munmap(int id){
 
 bool chdir(const char *dir){
   lock_acquire(&sys_lock);
-  
   struct dir* new_dir = open_directories(dir);
   bool success = new_dir!=NULL;
   if(success){
@@ -624,7 +623,7 @@ void set_evict_file(void *buffer, unsigned size, bool inevictable){
         } 
         struct spte * spte = spt_get_spte(temp);
         if(!spte){
-            printf("no spte\n");
+            // printf("no spte\n");
             exit(-1);
         }
         struct fte* fte = spte_to_fte(spte);

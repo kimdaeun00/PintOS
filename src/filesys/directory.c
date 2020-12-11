@@ -237,18 +237,17 @@ dir_remove (struct dir *dir, const char *name)
     bool is_empty = true;
     struct dir * subdir = dir_open(inode); //similar to readdir
 
-    // not allow to rm swd
+    // not allow to rm cwd
     if(thread_current()->dir != NULL && inode_get_inumber(inode) == inode_get_inumber(dir_get_inode(thread_current()->dir))){
       dir_close(subdir);
       goto done;
     } 
     
-    //if opened by process
-    if(thread_current()->dir != NULL && inode_is_open(dir->inode)){
+    //if opened by another process
+    if(thread_current()->dir != NULL && inode_open_cnt(subdir->inode)>2){
       dir_close(subdir);
       goto done;
     }
-
 
     off_t temp= sizeof(e);
     

@@ -5,11 +5,13 @@
 #include "filesys/off_t.h"
 #include "devices/block.h"
 #include "filesys/file.h"
+#include "lib/kernel/list.h"
 
 struct bitmap;
 struct inode_disk;
 
 void inode_init (void);
+
 /* added */
 block_sector_t find_block(const struct inode_disk*, size_t);
 size_t iterate_alloc(block_sector_t *, off_t, size_t);
@@ -36,6 +38,11 @@ off_t inode_length (const struct inode *);
 bool file_is_dir(struct file*);
 bool inode_is_dir(struct inode*);
 block_sector_t inode_to_inum(struct file*);
-bool inode_is_open(struct inode* );
+int inode_open_cnt(struct inode* );
+
+// bool inode_can_remove(struct inode*);
+// struct inode_thread* create_inode_thread(tid_t);
+// void reopen_inode_thread(struct inode *, tid_t);
+// void close_inode_thread(struct inode *, tid_t);
 
 #endif /* filesys/inode.h */

@@ -144,9 +144,6 @@ size_t inode_alloc_double(block_sector_t * sectors, size_t size){
   struct indirect_block *doubly_blocks= (struct indirect_block*) malloc(sizeof(struct indirect_block)); 
   size_t cnt = size;
   if(*sectors == 0){ 
-    // if(!free_map_allocate(1,sectors)){
-    //   return size;
-    // }
     free_map_allocate(1,sectors);
     cache_write(fs_device,*sectors,empty);
   }
@@ -310,9 +307,12 @@ inode_open (block_sector_t sector)
   /* Initialize. */
   list_push_front (&open_inodes, &inode->elem);
   inode->sector = sector;
+  // list_init(&inode->t_list);
   inode->open_cnt = 1;
   inode->deny_write_cnt = 0;
   inode->removed = false;
+  // lock_init(&inode->inode_thread_lock);
+  // list_push_back(&inode->t_list,&create_inode_thread(thread_current()->tid)->elem);
   cache_read (fs_device, inode->sector, &inode->data);
   return inode;
 }
@@ -321,8 +321,10 @@ inode_open (block_sector_t sector)
 struct inode *
 inode_reopen (struct inode *inode)
 {
-  if (inode != NULL)
+  if (inode != NULL){
     inode->open_cnt++;
+    // reopen_inode_thread(inode, thread_current()->tid);
+  }
   return inode;
 }
 
@@ -343,6 +345,8 @@ inode_close (struct inode *inode)
   if (inode == NULL)
     return;
 
+  // inode->open_cnt --;
+  // close_inode_thread(inode,thread_current()->tid);
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0)
     {
@@ -543,13 +547,57 @@ block_sector_t inode_to_inum(struct file* file){
   return file_get_inode(file)->sector;
 }
 
-bool inode_is_open(struct inode* inode){
-  struct list_elem *e;
-
-  for(e= list_front(&open_inodes);e->next != NULL; e = list_next(e)){
-    struct inode * temp = list_entry(e, struct inode, elem);
-    if(inode->sector == temp->sector)
-      return true;
-  }
-  return false; 
+int inode_open_cnt(struct inode* inode){
+  return inode->open_cnt;
 }
+
+// bool inode_can_remove(struct inode* inode){
+//   lock_acquire(&inode->inode_thread_lock);
+//   if(inode->open_cnt == 0 || list_size(&inode->t_list)==0){
+//     lock_release(&inode->inode_thread_lock);
+//     return true;
+//   }
+//   if(list_size(&inode->t_list) >1){
+//     lock_release(&inode->inode_thread_lock);
+//     return false;
+//   }
+//   lock_release(&inode->inode_thread_lock);
+//   return true;
+// }
+
+
+// struct inode_thread* create_inode_thread(tid_t tid){
+//   struct inode_thread* inode_thread = malloc(sizeof(struct inode_thread));
+//   inode_thread->open_cnt = 1;
+//   inode_thread->tid = tid;
+//   return inode_thread;
+// }
+
+// void reopen_inode_thread(struct inode * inode, tid_t tid){
+//   lock_acquire(&inode->inode_thread_lock);
+//   struct list_elem *e;
+//   for(e= list_front(&inode->t_list) ; e->next != NULL ; e=list_next(e)){
+//     struct inode_thread * temp = list_entry(e,struct inode_thread, elem);
+//     if(temp->tid == tid){
+//       temp->open_cnt ++;
+//       break;
+//     }
+//   }
+//   lock_release(&inode->inode_thread_lock);
+// }
+
+// void close_inode_thread(struct inode* inode,tid_t tid){
+//   lock_acquire(&inode->inode_thread_lock);
+//   struct list_elem *e;
+//   for(e= list_front(&inode->t_list) ; e->next != NULL ; e=list_next(e)){
+//     struct inode_thread * temp = list_entry(e,struct inode_thread, elem);
+//     if(temp->tid == tid){
+//       temp->open_cnt --;
+//       if(temp->open_cnt == 0){
+//         list_remove(e);
+//       }
+//       break;
+//     }
+//   }
+//   lock_release(&inode->inode_thread_lock);
+// }
