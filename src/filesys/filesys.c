@@ -54,14 +54,18 @@ filesys_create (const char *name, off_t initial_size, int is_dir)
   char * filename = (char*)calloc(1,128);
   char * dirname = (char*)calloc(1,128);
   split_name(name, filename, dirname);
+  if(strlen(filename)>14)
+    return false;
   // printf("2\n");
-  // printf("create ; %s : %s\n",dirname,filename);
+  // printf("create ; dirname %s : filename %s\n",dirname,filename);
   struct dir* dir = open_directories(dirname);
   // printf("create : %p\n", dir);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size,is_dir)
                   && dir_add (dir, filename, inode_sector, is_dir)); 
+  if(success)
+    printf("create success : %s\n",name);
   if (!success && inode_sector != 0) 
     free_map_release (inode_sector, 1);
   dir_close (dir);
@@ -79,8 +83,10 @@ filesys_open (const char *name)
   char * filename = (char*)calloc(1,128);
   char * dirname = (char*)calloc(1,128);
   struct inode *inode = NULL;
+  if(strlen(name)==0)
+    return NULL;
   split_name(name, filename, dirname);
-  // printf("filename : %s, dirname : %s\n",filename,dirname);
+  // printf("open dirname : %s, filename : %s\n",dirname, filename);
   struct dir* dir = open_directories(dirname);
   if(dir!=NULL){
     dir_lookup (dir, filename, &inode);
