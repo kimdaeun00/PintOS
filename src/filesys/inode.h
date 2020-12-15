@@ -37,6 +37,7 @@ off_t inode_length (const struct inode *);
 
 bool file_is_dir(struct file*);
 bool inode_is_dir(struct inode*);
+bool inode_is_removed(struct inode *);
 block_sector_t inode_to_inum(struct file*);
 int inode_open_cnt(struct inode* );
 

@@ -208,6 +208,7 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
+    printf("load failed %s \n", file_name);
     thread_current()->tid = -1;
     exit(-1);
     // thread_exit ();

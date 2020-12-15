@@ -97,13 +97,20 @@ filesys_open (const char *name)
   split_name(name, filename, dirname);
   // printf("open dirname : %s, filename : %s\n",dirname, filename);
   struct dir* dir = open_directories(dirname);
-  if(dir!=NULL){
-    dir_lookup (dir, filename, &inode);
+  if(dir == NULL){
+    return NULL;
   }
+  // if(dir!=NULL){
+  // }
   if(strlen(filename)==0){
     inode = dir_get_inode(dir);
   }
-  dir_close (dir);
+  else{
+    dir_lookup (dir, filename, &inode);
+    dir_close (dir);
+  }
+  // if(inode == NULL || inode_is_removed(inode))
+  //   return NULL;
   free(filename);
   free(dirname);
   // printf("open success : %s\n",name);

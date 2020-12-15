@@ -36,6 +36,7 @@ struct list_elem* clock_next(struct list* l,struct list_elem *e){
 void cache_write_back(struct cache_entry * ce){
     if(ce->dirty){
         block_write(ce->block,ce->block_idx,ce->buffer);
+        ce->dirty = false;
     }
 }
 
@@ -116,6 +117,7 @@ void cache_exit(void){
     for(e = list_front(&cache_list);e->next != NULL ; e = list_next(e)){
         struct cache_entry * temp = list_entry(e,struct cache_entry, elem);
         cache_write_back(temp);
+        list_remove(e);
         // free(temp);
     }
     lock_release(&cache_lock);

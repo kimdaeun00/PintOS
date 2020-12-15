@@ -245,7 +245,6 @@ void inode_free(struct inode_disk* disk){
 
   //doubly-indirect
   sectors -= inode_free_double(disk->double_indirect_sector,sectors);
-
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -541,6 +540,10 @@ bool inode_is_dir(struct inode * inode){
     return true;
   else
     return false;
+}
+
+bool inode_is_removed(struct inode * inode){
+  return inode->removed;
 }
 
 block_sector_t inode_to_inum(struct file* file){
