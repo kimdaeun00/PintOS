@@ -25,7 +25,7 @@ struct fte* frame_alloc(struct spte*, enum palloc_flags);
 struct fte* frame_alloc_exec(struct spte*, enum palloc_flags,struct fte*);
 struct fte* frame_alloc_swap(struct spte* , enum palloc_flags,struct fte*);
 void * find_evict(void);
-void spt_exit(struct hash);
+void spt_exit(struct hash *);
 struct fte* install_new_fte(void *, struct spte*);
 // void set_evict_file(void *, unsigned , bool);
 #endif

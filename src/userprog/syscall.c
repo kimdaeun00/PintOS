@@ -343,7 +343,7 @@ int open(const char *file)
   fd->fd = new_fd;
   fd->file = open_file;
   fd->dir = NULL;
-  if(file_is_dir(open_file)){
+  if(file_get_inode(open_file) != NULL && file_is_dir(open_file)){
     fd->dir = dir_open(inode_reopen(file_get_inode(open_file)));
   }
   memcpy(&(fd->elem),e,sizeof(struct list_elem));
@@ -459,6 +459,9 @@ void close(int fd)
   {
     list_remove(&(temp->elem));
     file_close(temp->file);
+    if(temp->dir != NULL){
+      dir_close(temp->dir);
+    }
     free(temp);
     lock_release(&sys_lock);
   }

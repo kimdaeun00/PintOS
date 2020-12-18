@@ -35,10 +35,10 @@ struct fte* spte_to_fte(struct spte* spte){
 }
 
 void fte_destroy(struct fte* fte){
-    lock_acquire(&ft_lock);
+    // lock_acquire(&ft_lock);
     list_remove(&fte->elem);
     free(fte);
-    lock_release(&ft_lock);
+    // lock_release(&ft_lock);
 
 }
 
@@ -81,6 +81,7 @@ struct fte* frame_alloc(struct spte* spte, enum palloc_flags flags){
         lock_acquire(&ft_lock);
         memset(fte->kpage,0,PGSIZE);
         pagedir_set_page(fte->t->pagedir,spte->upage,fte->kpage,spte->writable);
+        spte->status = VM_ON_MEMORY;
         lock_release(&ft_lock);
     }
     fte->inevictable = false;
@@ -183,8 +184,7 @@ void * find_evict(){
     // }
 }
 
-void spt_exit(struct hash spt){
-
-    hash_destroy(&spt,spt_hash_destroy);
+void spt_exit(struct hash *spt){
+    hash_destroy(spt,spt_hash_destroy);
 }
 

@@ -5,6 +5,7 @@
 #include <filesys/file.h>
 #include <list.h>
 #include "filesys/off_t.h"
+#include "threads/synch.h"
 
 /* Sectors of system file inodes. */
 #define FREE_MAP_SECTOR 0       /* Free map file inode sector. */
@@ -12,7 +13,7 @@
 
 /* Block device that contains the file system. */
 extern struct block *fs_device;
-
+struct lock filesys_lock;
 
 struct file_descriptor
 {
@@ -31,5 +32,7 @@ struct file *filesys_open (const char *name);
 bool filesys_remove (const char *name);
 
 void split_name(char*, char*, char*);
+char * contin_slash(char * );
 struct dir * open_directories(char*);
+
 #endif /* filesys/filesys.h */

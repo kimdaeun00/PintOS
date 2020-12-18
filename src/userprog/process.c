@@ -270,7 +270,7 @@ process_exit (void)
   mmape_exit(&cur->mmap_list);
   sema_up(&cur->sync_exit);
   sema_down(&cur->sync_free);
-  spt_exit(cur->spt);
+  spt_exit(&cur->spt);
   pd = cur->pagedir;
   // printf("destroy pagedir : %p\n",cur->pagedir);
   if (pd != NULL) 

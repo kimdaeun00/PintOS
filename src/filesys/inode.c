@@ -10,10 +10,12 @@
 #include "threads/thread.h"
 #include "filesys/file.h"
 
+
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 #define SECTOR_CNT BLOCK_SECTOR_SIZE/4
 #define DIRECT_CNT SECTOR_CNT - 5
+
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
@@ -177,12 +179,16 @@ size_t inode_alloc(struct inode_disk* disk, size_t sectors){
   size_t cnt = sectors;
   //direct
   cnt -= iterate_alloc(disk->direct_sector,DIRECT_CNT,cnt);
-  if(cnt ==0)
+  if(cnt ==0){
+    // lock_release(&filesys_lock);
     return sectors;
+  }
   //indirect
   cnt -=inode_alloc_indirect(&disk->indirect_sector,cnt);
-  if(cnt ==0)
+  if(cnt ==0){
+    // lock_release(&filesys_lock);  
     return sectors;
+  }
   //doubly indirect
   cnt -= inode_alloc_double(&disk->double_indirect_sector,cnt);
 
@@ -439,7 +445,6 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   
   // if(inode->data.is_dir)
   //   return -1;
-
   //extend file
   off_t extend =  offset + size - inode->data.length;
   if(extend > 0){ 

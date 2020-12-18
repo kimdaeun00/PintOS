@@ -6,6 +6,7 @@
 #include "devices/block.h"
 #include "filesys/file.h"
 #include "lib/kernel/list.h"
+#include "threads/synch.h"
 
 struct bitmap;
 struct inode_disk;
