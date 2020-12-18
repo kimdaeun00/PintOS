@@ -591,9 +591,12 @@ bool readdir(int fd, char* name){
     return false;
   }
   bool result = false;
-  if(file_is_dir(file->file)){
-    result = dir_readdir(file->dir,name);
+  if(!file_is_dir(file->file)){
+    lock_release(&sys_lock);  
+    return false;
   }
+  result = dir_readdir(file->dir,name);
+  // printf("%s %d\n",name,result);
   lock_release(&sys_lock);  
   return result;
 }
