@@ -16,6 +16,8 @@
 #define SECTOR_CNT BLOCK_SECTOR_SIZE/4
 #define DIRECT_CNT SECTOR_CNT - 5
 
+struct lock inode_lock;
+
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
@@ -107,6 +109,7 @@ void
 inode_init (void) 
 {
   list_init (&open_inodes);
+  lock_init(&inode_lock);
 }
 
 size_t iterate_alloc(block_sector_t * sectors, off_t length, size_t size ){
@@ -176,16 +179,19 @@ size_t inode_alloc_double(block_sector_t * sectors, size_t size){
 }
 
 size_t inode_alloc(struct inode_disk* disk, size_t sectors){
+  lock_acquire(&inode_lock);
   size_t cnt = sectors;
   //direct
   cnt -= iterate_alloc(disk->direct_sector,DIRECT_CNT,cnt);
   if(cnt ==0){
+    lock_release(&inode_lock);
     // lock_release(&filesys_lock);
     return sectors;
   }
   //indirect
   cnt -=inode_alloc_indirect(&disk->indirect_sector,cnt);
   if(cnt ==0){
+    lock_release(&inode_lock);
     // lock_release(&filesys_lock);  
     return sectors;
   }
@@ -193,6 +199,7 @@ size_t inode_alloc(struct inode_disk* disk, size_t sectors){
   cnt -= inode_alloc_double(&disk->double_indirect_sector,cnt);
 
   ASSERT(cnt == 0);
+  lock_release(&inode_lock);
   return sectors - cnt;
 
 }
@@ -453,7 +460,6 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     inode->data.length += extend;
     cache_write(fs_device,inode->sector,&inode->data);
   }
-
   while (size > 0) 
     {
       /* Sector to write, starting byte offset within sector. */

@@ -50,20 +50,33 @@ filesys_done (void)
 bool
 filesys_create (const char *name, off_t initial_size, int is_dir) 
 {
-  // lock_acquire(&filesys_lock);
+  lock_acquire(&filesys_lock);
   // printf("create : %s\n",name);
   block_sector_t inode_sector = 0;
   char * filename = (char*)calloc(1,128);
   char * dirname = (char*)calloc(1,128);
+  char * newname = (char*)calloc(1,128);
   split_name(name, filename, dirname);
+  if(is_dir && strlen(filename)==0){
+    int i;
+    for(i = strlen(name)-1; i>=0; i--){
+      if(name[i]!='/')
+        break;
+    }
+    strlcpy(newname, name, i+1);
+    split_name(newname, filename, dirname);
+  }
+
+  if(!strcmp(filename,".") || !strcmp(filename,"..")){
+    return false;
+  }
+  // printf("new: %s file: %s dir: %s\n",name, filename, dirname);
   if(strlen(filename)>14){
     free(filename);
     free(dirname);
-    // lock_release(&filesys_lock);
+    lock_release(&filesys_lock);
     return false;
   }
-  // printf("2\n");
-  // printf("create ; dirname %s : filename %s\n",dirname,filename);
   // printf("open_dir : %s\n",dirname);
   struct dir* dir = open_directories(dirname);
   // printf("create : %p\n", dir);
@@ -77,7 +90,7 @@ filesys_create (const char *name, off_t initial_size, int is_dir)
 
   free(filename);
   free(dirname);
-  // lock_release(&filesys_lock);
+  lock_release(&filesys_lock);
   return success;
 }
 
@@ -89,7 +102,7 @@ filesys_create (const char *name, off_t initial_size, int is_dir)
 struct file *
 filesys_open (const char *name)
 {
-  // lock_acquire(&filesys_lock);
+  lock_acquire(&filesys_lock);
   // printf("open : %s\n",name);
   char * filename = (char*)calloc(1,128);
   char * dirname = (char*)calloc(1,128);
@@ -97,14 +110,14 @@ filesys_open (const char *name)
   if(strlen(name)==0){
     free(filename);
     free(dirname);
-    // lock_release(&filesys_lock);  
+    lock_release(&filesys_lock);  
     return NULL;
   }
   split_name(name, filename, dirname);
   // printf("open dirname : %s, filename : %s\n",dirname, filename);
   struct dir* dir = open_directories(dirname);
   if(dir == NULL){
-    // lock_release(&filesys_lock);
+    lock_release(&filesys_lock);
     return NULL;
   }
   // if(dir!=NULL){
@@ -120,7 +133,7 @@ filesys_open (const char *name)
   //   return NULL;
   free(filename);
   free(dirname);
-  // lock_release(&filesys_lock);
+  lock_release(&filesys_lock);
   // printf("open success : %s\n",name);
   return file_open (inode);
 }
@@ -132,13 +145,13 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
-  // lock_acquire(&filesys_lock);
+  lock_acquire(&filesys_lock);
   char * filename = (char*)calloc(1,128);
   char * dirname = (char*)calloc(1,128);
   split_name(name, filename, dirname);
   struct dir* dir = open_directories(dirname);
   if(dir == NULL){
-    // lock_release(&filesys_lock);
+    lock_release(&filesys_lock);
     return false;
   }
 
@@ -150,7 +163,7 @@ filesys_remove (const char *name)
   //   printf("remove success : %s\n",name);
   // else
   //   printf("remove failed : %s\n",name);
-  // lock_release(&filesys_lock);
+  lock_release(&filesys_lock);
   return success;
 }
 
@@ -208,7 +221,6 @@ struct dir * open_directories(char* dirname){
   strlcpy(temp,new_dirname,strlen(new_dirname)+1);
   struct dir* abs_dir = NULL;
   struct dir* temp_dir = NULL;
-
   if(strlen(new_dirname)==0){ //file name만 들어왔으면 현재 directory return
     // return dir_open_root;
     if(thread_current()->dir != NULL){
@@ -238,11 +250,12 @@ struct dir * open_directories(char* dirname){
   for (token = strtok_r (temp, "/", &save_ptr); token != NULL;
         token = strtok_r (NULL, "/", &save_ptr))
     {
-      if(i++ !=0 && strlen(token)==0){
+      if(i++ ==0 && strlen(token)==0){
         continue;
       }
-      if(strlen(token)==0)
+      if(strlen(token)==0){
         break;
+      }
       struct inode* temp_inode = NULL;
       bool temp_bool = dir_lookup(abs_dir,token,&temp_inode);
       if(!temp_bool){

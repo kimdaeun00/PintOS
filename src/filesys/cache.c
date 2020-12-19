@@ -2,6 +2,7 @@
 #include "lib/kernel/list.h"
 #include "threads/malloc.h"
 #include "lib/string.h"
+#include "filesys/filesys.h"
 
 struct lock cache_lock;
 
@@ -35,7 +36,7 @@ struct list_elem* clock_next(struct list* l,struct list_elem *e){
 
 void cache_write_back(struct cache_entry * ce){
     if(ce->dirty){
-        block_write(ce->block,ce->block_idx,ce->buffer);
+        block_write(fs_device,ce->block_idx,ce->buffer);
         ce->dirty = false;
     }
 }
@@ -82,7 +83,7 @@ struct cache_entry * set_cache(struct block *block, block_sector_t sector){
     cache->dirty = false;
     cache->is_start = list_empty(&cache_list);
     cache->block = block;
-    block_read(block,sector,cache->buffer);
+    block_read(fs_device,sector,cache->buffer);
     list_push_back(&cache_list,&cache->elem);
     return cache;
 }
